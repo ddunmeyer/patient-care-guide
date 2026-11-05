@@ -73,5 +73,36 @@ python -m agents.coordinator   # runs the memory and guardrail tests
 
 Then run `streamlit run app.py`.
 
+## Deploy
+
+The `Dockerfile` installs the packages, builds the vector store with
+`python -m rag.ingest` during the build, and serves the app on port 8501.
+No keys are stored in the image. `.dockerignore` keeps `.env`, `.venv`,
+`chroma_db/`, `__pycache__` and `data/approved_requests.json` out of the image.
+
+Ingest needs your OpenAI key to embed the documents, so pass it as a build
+secret. Docker reads it from the environment variable and mounts it only for
+the ingest step (this needs BuildKit, which is on by default in current Docker):
+
+```powershell
+$env:OPENAI_API_KEY = "sk-..."
+docker build --secret id=openai_api_key,env=OPENAI_API_KEY -t agentic-starter-kit .
+```
+
+Pass the keys as environment variables when you start the container:
+
+```powershell
+docker run -p 8501:8501 `
+  -e OPENAI_API_KEY -e LANGFUSE_PUBLIC_KEY -e LANGFUSE_SECRET_KEY -e LANGFUSE_HOST `
+  agentic-starter-kit
+```
+
+Then open http://localhost:8501. Approved prior auth requests are saved inside
+the container and are lost when it is removed. To keep them, create the file
+on the host first (containing `[]`) and add
+`-v ${PWD}/approved_requests.json:/app/data/approved_requests.json` to the run
+command. Don't mount over all of `/app/data`, because the app reads
+`members.json` and the documents from there.
+
 > Status: the RAG layer, agents, conversation memory (in RAM, per thread_id), rule-based guardrails and the Streamlit app work. Prior auth drafts are only saved to `data/approved_requests.json` after a person clicks Approve. Every question is traced in Langfuse (redacted text only; tracing is skipped if the keys are missing), and `python -m evals.run_eval` runs the 12-case eval suite and sends each pass/fail to Langfuse as a score.
 > Member data in `data/members.json` is fake.

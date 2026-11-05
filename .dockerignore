@@ -1,0 +1,19 @@
+# Purpose: keep secrets, local state and build junk out of the Docker image.
+
+# Secrets: keys come from environment variables at runtime
+.env
+
+# Local virtual environment and Python caches
+.venv
+__pycache__
+**/__pycache__
+
+# Vector store is rebuilt inside the image by python -m rag.ingest
+chroma_db
+
+# Real approved prior auth requests stay on this machine
+data/approved_requests.json
+
+# Not needed in the image
+.git
+.vscode
