@@ -1,0 +1,15 @@
+# Purpose: Streamlit theme and settings for the Lakeshore Health Member Assistant.
+
+[theme]
+base = "light"
+primaryColor = "#0B6E8A"              # teal: buttons, links, focus
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F2F6F8"  # sidebar and chat input
+textColor = "#1F2933"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"               # hide developer menu items
+
+[browser]
+gatherUsageStats = false

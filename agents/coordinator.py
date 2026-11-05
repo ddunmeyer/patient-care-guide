@@ -22,7 +22,7 @@ Try it from the terminal:
 
 import json  # tool results are JSON text
 import re  # to spot member ids like M001
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, Callable, Literal, TypedDict
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver  # in-memory conversation store
@@ -46,6 +46,7 @@ class State(TypedDict, total=False):  # total=False: keys are filled in as we go
     agent_used: str
     answer: str
     sources: list[dict]
+    low_confidence: bool  # True if any document search had a weak match
     pending_draft: dict | None
     tools_called: list[str]
     output_guardrail: dict
@@ -100,7 +101,7 @@ def run_specialist(agent, name: str, state: State) -> State:
     # Only look at messages from this turn: the ones after the history we sent.
     new_messages = result["messages"][len(state["messages"]) + 1:]
 
-    tools_called, sources, draft = [], [], None
+    tools_called, sources, draft, low_confidence = [], [], None, False
     for msg in new_messages:
         # The model's tool requests: record each tool name and its arguments.
         if isinstance(msg, AIMessage):
@@ -111,6 +112,7 @@ def run_specialist(agent, name: str, state: State) -> State:
             data = json.loads(msg.content)
             if msg.name == "search_plan_documents":
                 sources.extend(data["sources"])
+                low_confidence = low_confidence or data["low_confidence"]
             if msg.name == "lookup_member" and "error" not in data:
                 # The member record is a source too (for deductible questions).
                 sources.append({"source": "members.json", "location": data["member_id"]})
@@ -121,6 +123,7 @@ def run_specialist(agent, name: str, state: State) -> State:
         "agent_used": name,
         "answer": new_messages[-1].content,  # the last message is the final answer
         "sources": sources,
+        "low_confidence": low_confidence,
         "pending_draft": draft,
         "tools_called": tools_called,
     }
@@ -143,6 +146,7 @@ def out_of_scope(state: State) -> State:
                    "authorization. For medical questions, please talk to your "
                    "doctor or pharmacist."),
         "sources": [],
+        "low_confidence": False,
         "pending_draft": None,
         "tools_called": [],
     }
@@ -179,18 +183,28 @@ graph.add_edge("output_check", END)
 app = graph.compile(checkpointer=MemorySaver())
 
 
-def ask(question: str, thread_id: str = "default") -> dict:
+def ask(question: str, thread_id: str = "default", member_id: str | None = None,
+        on_step: Callable[[str], None] | None = None) -> dict:
     """Run one question: input check, then the graph (router -> specialist ->
-    output check). Calls with the same thread_id share memory."""
+    output check). Calls with the same thread_id share memory.
+
+    member_id: optional id chosen in the UI; an id typed in the question wins.
+    on_step: optional function called with each step's name as it finishes,
+    so a UI can show progress ("input_check", "router", "benefits", ...).
+    """
+    report = on_step or (lambda step: None)  # do nothing if no callback given
+
     # 1. Input check, before anything reaches the model or memory.
     checked = check_input(question)
+    report("input_check")
     if not checked.allowed:
         return {
             "question": checked.text,
             "answer": "Sorry, I can't help with that request. "
                       "I can answer questions about your Lakeshore Health PPO plan.",
             "route": "blocked", "route_reason": checked.reason,
-            "agent_used": "none", "sources": [], "pending_draft": None,
+            "agent_used": "none", "sources": [], "low_confidence": False,
+            "pending_draft": None,
             "tools_called": [], "member_id": None,
             "input_guardrail": vars(checked), "output_guardrail": None,
         }
@@ -198,8 +212,18 @@ def ask(question: str, thread_id: str = "default") -> dict:
     # 2-4. Run the graph on the cleaned text. The config tells the
     # checkpointer which conversation to load and save.
     config = {"configurable": {"thread_id": thread_id}}
-    state = app.invoke({"question": checked.text,
-                        "messages": [("human", checked.text)]}, config)
+    inputs = {"question": checked.text, "messages": [("human", checked.text)]}
+    if member_id:
+        inputs["member_id"] = member_id  # the router keeps it unless the question has one
+
+    # stream() runs the same graph as invoke(), but hands back each node's
+    # name as it finishes, so we can report progress.
+    for update in app.stream(inputs, config, stream_mode="updates"):
+        for node_name in update:
+            report(node_name)
+
+    # The checkpointer saved the final state; read it back.
+    state = app.get_state(config).values
     # Leave the message history out of the result to keep it readable.
     result = {k: v for k, v in state.items() if k != "messages"}
     return {**result, "input_guardrail": vars(checked)}
