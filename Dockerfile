@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
-# Purpose of this file: build a container image of the Lakeshore Health Member
-# Assistant. It installs the Python packages, builds the ChromaDB vector store
+# Purpose of this file: build a container image of the Patient Intake &
+# Condition Guide (care_app.py; the original member assistant, app.py, is also
+# included). It installs the Python packages, builds the ChromaDB vector store
 # from data/docs/ (python -m rag.ingest), and starts the Streamlit app on 8501.
 #
 # No API keys are stored in the image. Ingest needs OPENAI_API_KEY to embed the
@@ -33,7 +34,8 @@ RUN --mount=type=secret,id=openai_api_key,required=true \
 
 EXPOSE 8501
 
-# Starts the member assistant. For the Patient Intake & Condition Guide, add
-# this to docker run:  streamlit run care_app.py --server.address 0.0.0.0
+# Starts the Patient Intake & Condition Guide (this branch's app). For the
+# original member assistant, add this to docker run:
+#   streamlit run app.py --server.address 0.0.0.0
 
-CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0"]
+CMD ["streamlit", "run", "care_app.py", "--server.address", "0.0.0.0"]

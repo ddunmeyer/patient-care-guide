@@ -46,7 +46,7 @@ flowchart TD
 
 | Path | Job |
 | --- | --- |
-| `care_app.py` | Streamlit app: New Intake, Patient Info Sheet, Care Team Briefing, Patient History |
+| `care_app.py` | Streamlit app: Home, New Intake (one question per screen), Patient Info Sheet, Care Team Briefing, Patient History |
 | `agents/intake_models.py`, `agents/intake_agent.py` | The IntakeRecord and the question-by-question IntakeAgent |
 | `guardrails/intake_pii.py` | Masks names, phone numbers and addresses before any model call |
 | `triage/urgent_signs.py` | Urgent signs check: plain Python rules, never the model |
@@ -92,9 +92,13 @@ streamlit run care_app.py
 
 Then open http://localhost:8501:
 
-1. **New Intake**: optionally type the patient's name (it is used only to hide
-   the name in answers), then click **Start new intake** and answer each
-   question. Try "chest pain and sweating a lot" as the main problem to see
+1. **Home** shows a few stat cards. Click **Start new intake**, optionally
+   type the patient's name (it is used only to hide the name in answers), and
+   click **Start**. Each screen shows one question. Tap a big answer button
+   or type the answer, then use **Back / Skip / Next**. A thin bar shows
+   progress, and every answer so far is a chip at the bottom: tap a chip to
+   go back to that question. Pages are in the slim top bar; there is no
+   sidebar. Try "chest pain and sweating a lot" as the main problem to see
    the emergency stop.
 2. When the intake is done, check the condition and click **Make patient sheet
    and care team briefing** (about 15-40 seconds).
@@ -142,14 +146,17 @@ Last run: intake 10/10, conditions 5/5 (median 13 seconds per condition).
 
 ### Docker
 
-Build the image the same way as the original kit (see **Deploy** below), then
-start the care guide instead of the member assistant:
+Build the image the same way as the original kit (see **Deploy** below). On
+this branch the image starts the care guide (`care_app.py`) by default:
 
 ```powershell
 docker run -p 8501:8501 -e OPENAI_API_KEY -e TAVILY_API_KEY `
   -e LANGFUSE_PUBLIC_KEY -e LANGFUSE_SECRET_KEY -e LANGFUSE_HOST `
-  agentic-starter-kit streamlit run care_app.py --server.address 0.0.0.0
+  agentic-starter-kit
 ```
+
+To start the original member assistant instead, add
+`streamlit run app.py --server.address 0.0.0.0` to the end of that command.
 
 Approved records are saved in `/app/data/care_records.db` inside the
 container. To keep them, mount a folder for that one file. Don't mount over
