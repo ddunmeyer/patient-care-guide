@@ -59,6 +59,7 @@ flowchart TD
 | `agents/care_coordinator.py` | LangGraph flow: urgent check, then lookup, then both agents in parallel |
 | `agents/care_store.py` | Saves approved records to `data/care_records.db` |
 | `agents/care_export.py` | Patient PDF and SMS; care team PDF and Markdown |
+| `agents/speech.py` | Optional voice answers: speech to text with OpenAI gpt-4o-mini-transcribe |
 | `evals/intake_cases.json`, `evals/condition_cases.json`, `evals/run_care_eval.py` | The eval |
 
 ## How to run
@@ -94,12 +95,15 @@ Then open http://localhost:8501:
 
 1. **Home** shows a few stat cards. Click **Start new intake**, optionally
    type the patient's name (it is used only to hide the name in answers), and
-   click **Start**. Each screen shows one question. Tap a big answer button
-   or type the answer, then use **Back / Skip / Next**. A thin bar shows
-   progress, and every answer so far is a chip at the bottom: tap a chip to
-   go back to that question. Pages are in the slim top bar; there is no
-   sidebar. Try "chest pain and sweating a lot" as the main problem to see
-   the emergency stop.
+   click **Start**. A slim top bar shows the patient ID, an urgent-status
+   pill, the language and **Exit** (back to Home; the intake is kept). A thin
+   progress bar shows "Step X of 5 · section · time left". Each question sits
+   in a center card: tap a big answer button, type the answer, or record it
+   under **Answer by voice** (it is turned into text you can check), then tap
+   **Next** (an empty answer is skipped) or **Back**. Every answer so far is a
+   chip at the bottom: tap one to edit it. Try "chest pain and sweating a
+   lot" as the main problem: the whole page turns into the red **Get
+   emergency care now** screen.
 2. When the intake is done, check the condition and click **Make patient sheet
    and care team briefing** (about 15-40 seconds).
 3. Review and edit both drafts, tick **I reviewed...** on each, then click
@@ -186,6 +190,10 @@ all of `/app/data`.
   prescribing or diagnosis patterns, including doses inside trial
   intervention names. The app also warns about a caregiver's own edits that
   match these patterns, and Approve stays off until they are changed.
+- **Voice answers are the one exception to masking.** A recording has to go
+  to OpenAI to become text, before names can be masked, so the screen asks
+  the caregiver not to say names, phone numbers or addresses. The text then
+  goes into the answer box for checking and is masked like any typed answer.
 - **Personal details stay local.** Names, phone numbers, addresses, emails
   and dates are masked before anything reaches OpenAI or Langfuse. Model
   calls use the `patient_id`, never the name, and the name typed in the app

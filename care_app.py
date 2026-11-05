@@ -3,13 +3,16 @@ Condition Guide, used by a caregiver together with the patient.
 
 Pages, in a slim top bar (no sidebar):
   0. Home                - what the app does, stat cards, Start new intake.
-  1. New Intake          - one question per screen: big question, big answer
-                           buttons, a typed box, Back / Skip / Next, a thin
-                           progress bar and every answer as a chip at the
-                           bottom (tap one to go back to it). The urgent
-                           signs check runs after every answer and stops the
-                           intake with a big "Get emergency care now"
-                           banner. Then it makes both drafts.
+  1. New Intake          - one question at a time: a slim top bar (logo,
+                           urgent-status pill, language, Exit), a thin
+                           progress bar ("Step X of 5 · section · time
+                           left"), a center card with the question, big
+                           answer buttons and an optional typed or spoken
+                           answer, Back / Next, and every answer as a chip
+                           at the bottom (tap one to edit it). The urgent
+                           signs check runs after every answer; a sign
+                           replaces the page with a red "Get emergency care
+                           now" screen. Then it makes both drafts.
   2. Patient Info Sheet  - review and edit the plain-language sheet.
   3. Care Team Briefing  - review and edit the briefing.
   4. Patient History     - approved records, with PDF / SMS / Markdown export.
@@ -38,6 +41,7 @@ from agents.care_store import get_record, list_records, save_approved
 from agents.intake_agent import (QUESTION_BY_FIELD, QUESTIONS, answer_question, new_session,
                                  next_question, progress)
 from agents.patient_education import reading_grade
+from agents.speech import transcribe
 from guardrails.grounding import safety_problem
 from triage.urgent_signs import BANNER_TEXT, BANNER_TITLE, check_urgent
 
@@ -47,25 +51,26 @@ st.set_page_config(page_title="Patient Intake & Condition Guide",
 
 # Styles, made for a phone or tablet held by the caregiver:
 #   - no sidebar (pages are in the top bar), less empty space at the top
-#   - big buttons; the small "Start over" button and the answer chips stay small
-#   - a thin progress bar, a big question, a big red emergency banner
+#   - big buttons; the small Exit button and the answer chips stay small
+#   - a thin progress bar, a center card with a big question
 st.markdown("""<style>
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] { display: none; }
 .block-container { padding-top: 3.2rem; padding-bottom: 2rem; }
 div.stButton > button, div.stDownloadButton > button, div.stFormSubmitButton > button {
     min-height: 3.2rem; font-size: 1.15rem; font-weight: 600; }
-.st-key-start_over button { min-height: 2.1rem; font-size: 0.9rem; font-weight: 500; }
-.topbar { display: flex; justify-content: space-between; align-items: center;
-    font-size: 0.95rem; color: #52606D; padding: 0.2rem 0; }
-.topbar b { color: #1F2933; }
-.thin-progress { height: 5px; background: #E4EBEF; border-radius: 3px; margin: 0.3rem 0 0.2rem; }
-.thin-progress > div { height: 5px; background: #0B6E8A; border-radius: 3px; }
-.step { font-size: 0.85rem; color: #52606D; margin-bottom: 1.2rem; }
+.st-key-exit_intake button { min-height: 2.1rem; font-size: 0.9rem; font-weight: 500; }
+.pid { color: #52606D; font-size: 0.9rem; }
+/* thin progress bar */
+.stProgress div[role="progressbar"] > div > div { height: 6px; }
+/* the center card */
+.st-key-question_card { border-radius: 0.9rem; padding: 0.6rem 0.4rem;
+    box-shadow: 0 2px 10px rgba(15, 40, 60, 0.07); margin-top: 0.4rem; }
+/* bottom strip of answer chips: small, not big buttons */
+.st-key-chip_strip button { min-height: 1.8rem; font-size: 0.85rem; font-weight: 500; }
+.emergency h1 { font-size: 2.6rem; margin-bottom: 0.4rem; }
+.emergency .lead { font-size: 1.25rem; }
 .question { font-size: 1.7rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.3rem; }
 .hint { color: #52606D; margin-bottom: 1rem; }
-.urgent-banner { background: #B00020; color: white; padding: 1.2rem 1.4rem;
-    border-radius: 0.6rem; margin-bottom: 1rem; }
-.urgent-banner h2 { color: white; margin: 0 0 0.4rem 0; font-size: 2rem; }
 </style>""", unsafe_allow_html=True)
 
 ss = st.session_state  # short name; everything that must survive a rerun lives here
@@ -131,15 +136,6 @@ def include_box(label: str, group: str, item_id: str) -> None:
     st.checkbox(label, value=item_id not in excluded, key=key, on_change=save)
 
 
-def urgent_banner(result) -> None:
-    signs = "".join(f"<li><b>{s.name}</b>: {s.reason}</li>" for s in result.signs)
-    st.markdown(f'<div class="urgent-banner"><h2>{BANNER_TITLE}</h2>'
-                f"<p>{BANNER_TEXT}</p><ul>{signs}</ul></div>", unsafe_allow_html=True)
-    st.subheader("While you get help")
-    for i, step in enumerate(result.first_aid, 1):
-        st.markdown(f"**{i}.** {step}")
-
-
 def no_draft_message() -> bool:
     if "draft" not in ss:
         st.info("No draft yet. Finish a New Intake first.", icon=":material/info:")
@@ -166,16 +162,34 @@ def page_home() -> None:
         with col.container(border=True):
             st.metric(label, value)
 
-    if st.button("Start new intake", type="primary", width="stretch", icon=":material/person_add:"):
+    if "session" in ss and st.button(f"Continue intake ({ss.session.record.patient_id})",
+                                     type="primary", width="stretch", icon=":material/play_arrow:"):
+        st.switch_page(PAGES["intake"])
+    if st.button("Start new intake", type="primary" if "session" not in ss else "secondary",
+                 width="stretch", icon=":material/person_add:"):
         reset_intake()
         st.switch_page(PAGES["intake"])
     if st.button("Patient history", width="stretch", icon=":material/history:"):
         st.switch_page(PAGES["history"])
 
 
-# --- Page 1: New Intake (one question per screen) ---
+# --- Page 1: New Intake (one question at a time) ---
+# Only the screen changed; the intake logic (agents/intake_agent.py, masking,
+# the urgent check after every answer) is exactly the same.
+
+# The 5 steps shown in the progress bar. Each intake question belongs to one.
+SECTIONS = [
+    ("About the patient", ["preferred_language", "age", "sex", "pregnant", "weight_kg"]),
+    ("Today's problem", ["chief_complaint", "symptoms", "reported_condition"]),
+    ("Health history", ["known_conditions", "current_meds", "allergies",
+                        "past_surgeries_hospital_stays", "family_history"]),
+    ("Lifestyle and vitals", ["lifestyle", "vitals"]),
+    ("Notes", ["caregiver_notes"]),
+]
+SECONDS_PER_QUESTION = 20  # rough time per question, for "time left"
+
 # Big answer buttons for common answers: (button label, the answer it sends).
-# The typed box is always there too, for any other answer.
+# The typed (or spoken) box is always there too, for any other answer.
 CHOICES = {
     "preferred_language": [(x, x) for x in ("English", "Swahili", "French", "Spanish",
                                             "Portuguese", "Arabic")],
@@ -220,15 +234,15 @@ def current_question(session):
 
 def submit(session, field: str, answer: str) -> None:
     """Save one answer (masked first, inside answer_question), run the urgent
-    check, then move to the next question."""
+    check, then move to the next question. An empty answer counts as skipped."""
     with st.spinner("Reading the answer..."):
         answer_question(session, field, answer)
     ss.urgent = check_urgent(session.record, session.answers)
+    ss.pop(f"voice-text-{field}", None)
     # Next screen: if the following question was already answered (we are
     # going back through earlier answers), show it; otherwise the first
-    # unanswered one. On an urgent sign, show the banner.
-    qs = applicable(session)
-    fields = [q.field for q in qs]
+    # unanswered one. On an urgent sign, the red screen takes over.
+    fields = [q.field for q in applicable(session)]
     after = fields[fields.index(field) + 1:] if field in fields else []
     if ss.urgent.urgent or not after or after[0] not in session.answers:
         ss.cursor = None
@@ -247,113 +261,170 @@ def go_back(session, question) -> None:
 
 
 def top_bar(session) -> None:
-    """Slim bar: app name and patient ID on the left, Start over on the right."""
-    left, right = st.columns([4, 1], vertical_alignment="center")
-    left.markdown(f'<div class="topbar"><span><b>New intake</b> · Patient '
-                  f'{session.record.patient_id}</span></div>', unsafe_allow_html=True)
-    if right.button("Start over", key="start_over", width="stretch"):
-        reset_intake()
-        st.rerun()
+    """Slim bar: logo + "New intake", urgent-status pill, language, Exit."""
+    logo, status, lang, leave = st.columns([3.2, 2.2, 1.6, 1], vertical_alignment="center")
+    logo.markdown(":material/medical_services: **New intake** "
+                  f"<span class='pid'>· {session.record.patient_id}</span>",
+                  unsafe_allow_html=True)
+    with status:
+        if ss.get("urgent") and ss.urgent.urgent:
+            st.badge("Urgent sign", icon=":material/emergency:", color="red")
+        else:
+            st.badge("No urgent signs", icon=":material/check_circle:", color="green")
+    lang.markdown(f":material/translate: {session.record.preferred_language or 'English'}")
+    if leave.button("Exit", key="exit_intake", width="stretch",
+                    help="Back to Home. The intake is kept so you can continue it."):
+        ss.cursor = None
+        st.switch_page(PAGES["home"])
 
 
-def thin_progress(session, question) -> None:
-    qs = applicable(session)
+def section_of(field: str) -> tuple[int, str]:
+    for i, (name, fields) in enumerate(SECTIONS, 1):
+        if field in fields:
+            return i, name
+    return len(SECTIONS), SECTIONS[-1][0]
+
+
+def progress_bar(session, question) -> None:
+    """Thin st.progress with "Step X of 5 · <section> · time left"."""
     done, total = progress(session)
-    number = ([q.field for q in qs].index(question.field) + 1) if question in qs else total
-    st.markdown(f'<div class="thin-progress"><div style="width:{100 * done / max(total, 1):.0f}%">'
-                f'</div></div><div class="step">Question {number} of {total}</div>',
-                unsafe_allow_html=True)
+    left = total - done
+    if question is None:
+        text = f"Step {len(SECTIONS)} of {len(SECTIONS)} · Done"
+    else:
+        step, name = section_of(question.field)
+        minutes = left * SECONDS_PER_QUESTION / 60
+        time_left = "under 1 min left" if minutes < 1 else f"about {round(minutes)} min left"
+        text = f"Step {step} of {len(SECTIONS)} · {name} · {time_left}"
+    st.progress(done / total if total else 1.0, text=text)
 
 
 def answer_chips(session) -> None:
-    """Every answer so far as a small chip. Tapping one goes back to it."""
+    """Bottom strip: every answer so far as a small chip. Tap one to edit it."""
     fields = [q.field for q in applicable(session) if q.field in session.answers]
     if not fields:
         return
 
     def label(f: str) -> str:
-        text = session.answers[f].strip() or "skipped"
-        text = "skipped" if text.lower() == "skip" else text
+        text = session.answers[f].strip()
+        text = "skipped" if not text or text.lower() == "skip" else text
         return f"{SHORT[f]}: {text[:24]}{'...' if len(text) > 24 else ''}"
 
     def jump():
         ss.cursor = ss.chips
         ss.chips = None  # clear the selection so the same chip can be tapped again
 
-    st.divider()
-    st.pills("Answers so far (tap one to change it)", fields, format_func=label, key="chips",
-             on_change=jump)
-    if session.pii_found:
-        st.caption(f":material/shield_lock: Hidden before anything was sent: "
-                   f"{', '.join(session.pii_found)}")
+    with st.container(key="chip_strip"):
+        st.pills("Answers so far · tap one to change it", fields, format_func=label, key="chips",
+                 on_change=jump)
+        if session.pii_found:
+            st.caption(f":material/shield_lock: Hidden before anything was sent: "
+                       f"{', '.join(session.pii_found)}")
 
 
-def question_screen(session, question) -> None:
-    """One question: big text, big answer buttons, a typed box, Back/Skip/Next."""
-    st.markdown(f'<div class="question">{question.text}</div>', unsafe_allow_html=True)
-    if question.hint:
-        st.markdown(f'<div class="hint">Example: {question.hint}</div>', unsafe_allow_html=True)
+def question_card(session, question) -> None:
+    """The center card: one question, big answer buttons, an optional typed or
+    spoken answer, and the footer (Back on the left, Next on the right)."""
     current = session.answers.get(question.field, "")
+    if current.strip().lower() == "skip":
+        current = ""
+    with st.container(border=True, key="question_card"):
+        st.markdown(f'<div class="question">{question.text}</div>', unsafe_allow_html=True)
+        if question.hint:
+            st.markdown(f'<div class="hint">Example: {question.hint}</div>',
+                        unsafe_allow_html=True)
 
-    # Big answer buttons, two per row. The current answer is highlighted.
-    choices = CHOICES.get(question.field, [])
-    for row in range(0, len(choices), 2):
-        for col, (label, value) in zip(st.columns(2), choices[row:row + 2]):
-            chosen = current.strip().lower() == value.lower()
-            if col.button(label, key=f"choice-{question.field}-{label}", width="stretch",
-                          type="primary" if chosen else "secondary"):
-                submit(session, question.field, value)
+        # Big answer buttons, three per row, full width. The current answer is highlighted.
+        choices = CHOICES.get(question.field, [])
+        for row in range(0, len(choices), 3):
+            cols = st.columns(3)
+            for col, (label, value) in zip(cols, choices[row:row + 3]):
+                chosen = current.strip().lower() == value.lower()
+                if col.button(label, key=f"choice-{question.field}-{label}", width="stretch",
+                              type="primary" if chosen else "secondary"):
+                    submit(session, question.field, value)
 
-    # Typed answer + footer. A form lets Enter submit, and keeps the box
-    # from rerunning the app on every keystroke.
-    with st.form(f"form-{question.field}", border=False):
-        typed = st.text_input("Or type the answer" if choices else "Answer",
-                              value="" if current.lower() == "skip" else current,
-                              placeholder=question.hint,
-                              label_visibility="visible" if choices else "collapsed")
-        back, skip, nxt = st.columns([1, 1, 2])
-        is_first = question.field == applicable(session)[0].field
-        pressed_back = back.form_submit_button("Back", width="stretch", disabled=is_first,
-                                               icon=":material/arrow_back:")
-        pressed_skip = skip.form_submit_button("Skip", width="stretch")
-        pressed_next = nxt.form_submit_button("Next", type="primary", width="stretch",
-                                              icon=":material/arrow_forward:")
+        # Optional voice answer: transcribed into the text box below, where the
+        # caregiver can check it before tapping Next.
+        voice_key = f"voice-text-{question.field}"
+        with st.expander("Answer by voice", icon=":material/mic:"):
+            st.caption("Don't say the patient's name, phone number or address: the recording "
+                       "is sent to OpenAI to turn it into text.")
+            audio = st.audio_input("Record the answer", key=f"audio-{question.field}",
+                                   label_visibility="collapsed")
+            if audio is not None and ss.get(f"{voice_key}-id") != audio.file_id:
+                with st.spinner("Turning speech into text..."):
+                    ss[voice_key] = transcribe(audio.getvalue())
+                ss[f"{voice_key}-id"] = audio.file_id  # don't transcribe the same clip twice
+
+        # The typed answer and the footer sit in a form, so Enter means Next
+        # and typing doesn't rerun the app on every key.
+        with st.form(f"form-{question.field}", border=False):
+            typed = st.text_input("Or type the answer" if choices else "Answer",
+                                  value=ss.get(voice_key, current),
+                                  placeholder="Type here, or leave empty to skip",
+                                  label_visibility="visible" if choices else "collapsed")
+            back, _, nxt = st.columns([1, 1, 2])
+            is_first = question.field == applicable(session)[0].field
+            pressed_back = back.form_submit_button("Back", width="stretch", disabled=is_first,
+                                                   icon=":material/arrow_back:")
+            pressed_next = nxt.form_submit_button("Next", type="primary", width="stretch",
+                                                  icon=":material/arrow_forward:")
     if pressed_back:
         go_back(session, question)
-    if pressed_skip:
-        submit(session, question.field, "skip")
     if pressed_next:
-        submit(session, question.field, typed)
+        submit(session, question.field, typed)  # empty = skipped
 
 
-def done_screen(session) -> None:
-    st.markdown('<div class="question">Intake complete</div>', unsafe_allow_html=True)
-    st.success("No urgent signs found.", icon=":material/check_circle:")
-    with st.expander("Intake summary"):
-        st.markdown("\n".join(f"- {line}" for line in intake_lines(session.record)))
+def done_card(session) -> None:
+    with st.container(border=True, key="question_card"):
+        st.markdown('<div class="question">Intake complete</div>', unsafe_allow_html=True)
+        st.success("No urgent signs found.", icon=":material/check_circle:")
+        with st.expander("Intake summary"):
+            st.markdown("\n".join(f"- {line}" for line in intake_lines(session.record)))
+        st.write("Which condition should the information be about? This app does not diagnose: "
+                 "use what a health worker told the patient.")
+        condition = st.text_input("Condition", value=session.record.reported_condition or "",
+                                  placeholder="e.g. malaria, type 2 diabetes")
+        back, make = st.columns([1, 3])
+        if back.button("Back", width="stretch", icon=":material/arrow_back:"):
+            go_back(session, None)
+        if make.button("Make patient sheet and briefing", type="primary", width="stretch",
+                       icon=":material/description:", disabled=not condition.strip()):
+            make_drafts(condition)
+        if "draft" in ss:
+            st.page_link(PAGES["sheet"], label="Review the Patient Info Sheet",
+                         icon=":material/arrow_forward:")
+            st.page_link(PAGES["briefing"], label="Review the Care Team Briefing",
+                         icon=":material/arrow_forward:")
 
-    st.write("Which condition should the information be about? This app does not diagnose: "
-             "use what a health worker told the patient.")
-    condition = st.text_input("Condition", value=session.record.reported_condition or "",
-                              placeholder="e.g. malaria, type 2 diabetes")
-    back, make = st.columns([1, 3])
-    if back.button("Back", width="stretch", icon=":material/arrow_back:"):
-        go_back(session, None)
-    if make.button("Make patient sheet and briefing", type="primary", width="stretch",
-                   icon=":material/description:", disabled=not condition.strip()):
-        make_drafts(condition)
-    if "draft" in ss:
-        st.page_link(PAGES["sheet"], label="Review the Patient Info Sheet",
-                     icon=":material/arrow_forward:")
-        st.page_link(PAGES["briefing"], label="Review the Care Team Briefing",
-                     icon=":material/arrow_forward:")
+
+def emergency_screen(session) -> None:
+    """Replaces the whole page when an urgent sign is found: red background,
+    the signs, simple first-aid steps. No questions, no Next button."""
+    st.markdown("<style>.stApp { background: #B00020; } .stApp, .stApp p, .stApp li, "
+                ".stApp h1, .stApp h2, .stApp h3, .stApp label, .stApp span "
+                "{ color: white !important; }</style>", unsafe_allow_html=True)
+    result = ss.urgent
+    st.markdown(f'<div class="emergency"><h1>:material/emergency: {BANNER_TITLE}</h1>'
+                f"<p class='lead'>{BANNER_TEXT}</p></div>", unsafe_allow_html=True)
+    for s in result.signs:
+        st.markdown(f"**{s.name}** · {s.reason}")
+    st.subheader("While you get help")
+    for i, step in enumerate(result.first_aid, 1):
+        st.markdown(f"**{i}.** {step}")
+    st.divider()
+    st.caption("Answer typed by mistake? Tap it below to correct it, and the check runs again.")
+    answer_chips(session)
+    if st.button("Exit to Home", key="exit_emergency", width="stretch", icon=":material/home:"):
+        st.switch_page(PAGES["home"])
 
 
 def page_intake() -> None:
     if "session" not in ss:
         st.title("New Intake")
-        st.write("Ask the patient each question in simple words. Tap an answer or type it. "
-                 "You can skip any question and change answers later.")
+        st.write("Ask the patient each question in simple words. Tap an answer, type it or say "
+                 "it. You can leave any question empty and change answers later.")
         name = st.text_input("Patient's name (optional)",
                              help="Only used to hide the name in answers. Never saved or sent.")
         if st.button("Start", type="primary", width="stretch", icon=":material/play_arrow:"):
@@ -363,23 +434,20 @@ def page_intake() -> None:
         return
 
     session = ss.session
-    top_bar(session)
-    question = current_question(session)
-
-    # The urgent check runs after every answer. If it fires, the intake stops
-    # (unless the caregiver tapped a chip to correct a mistyped answer).
+    # The urgent check runs after every answer. If it finds a sign, the red
+    # emergency screen replaces the whole page (unless the caregiver tapped a
+    # chip to correct a mistyped answer).
     if ss.get("urgent") and ss.urgent.urgent and not ss.get("cursor"):
-        urgent_banner(ss.urgent)
-        st.caption("If an answer was typed by mistake, tap it below to correct it. "
-                   "The check runs again.")
-        answer_chips(session)
+        emergency_screen(session)
         return
 
-    thin_progress(session, question)
+    top_bar(session)
+    question = current_question(session)
+    progress_bar(session, question)
     if question:
-        question_screen(session, question)
+        question_card(session, question)
     else:
-        done_screen(session)
+        done_card(session)
     answer_chips(session)
 
 
