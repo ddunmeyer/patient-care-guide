@@ -56,7 +56,7 @@ def _could_be_pregnant(r: IntakeRecord) -> bool:
 QUESTIONS = [
     Question("preferred_language", "Which language does the patient prefer?",
              "English, Swahili, French, Spanish..."),
-    Question("age", "How old is the patient? (in years)", "34, or '8 months' for a baby"),
+    Question("age", "How old is the patient?", "34, or '8 months' for a baby"),
     Question("sex", "Is the patient female or male?", "female / male / other"),
     Question("pregnant", "Is she pregnant, or could she be pregnant?", "yes / no / not sure",
              applies=_could_be_pregnant),

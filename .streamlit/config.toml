@@ -2,7 +2,7 @@
 
 [theme]
 base = "light"
-primaryColor = "#0B6E8A"              # teal: buttons, links, focus
+primaryColor = "#1D9E75"              # green, matches the slide deck
 backgroundColor = "#FFFFFF"
 secondaryBackgroundColor = "#F2F6F8"  # sidebar and chat input
 textColor = "#1F2933"

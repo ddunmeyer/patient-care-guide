@@ -59,6 +59,7 @@ st.markdown("""<style>
 div.stButton > button, div.stDownloadButton > button, div.stFormSubmitButton > button {
     min-height: 3.2rem; font-size: 1.15rem; font-weight: 600; }
 .st-key-exit_intake button { min-height: 2.1rem; font-size: 0.9rem; font-weight: 500; }
+.st-key-voice_btn button, .st-key-lang_btn button { min-height: 1.8rem; font-size: 0.95rem; font-weight: 500; }
 .pid { color: #52606D; font-size: 0.9rem; }
 /* thin progress bar */
 .stProgress div[role="progressbar"] > div > div { height: 6px; }
@@ -238,7 +239,9 @@ def submit(session, field: str, answer: str) -> None:
     with st.spinner("Reading the answer..."):
         answer_question(session, field, answer)
     ss.urgent = check_urgent(session.record, session.answers)
-    ss.pop(f"voice-text-{field}", None)
+    # Forget this question's screen state (typed text, voice text, age estimate).
+    for key in (f"ans-{field}", f"voice-pending-{field}", "age_estimate_open", "voice_open"):
+        ss.pop(key, None)
     # Next screen: if the following question was already answered (we are
     # going back through earlier answers), show it; otherwise the first
     # unanswered one. On an urgent sign, the red screen takes over.
@@ -252,6 +255,8 @@ def submit(session, field: str, answer: str) -> None:
 
 
 def go_back(session, question) -> None:
+    for key in ("age_estimate_open", "voice_open"):
+        ss.pop(key, None)
     fields = [q.field for q in applicable(session)]
     if question is None:  # from the "done" screen: back to the last question
         ss.cursor = fields[-1]
@@ -271,7 +276,11 @@ def top_bar(session) -> None:
             st.badge("Urgent sign", icon=":material/emergency:", color="red")
         else:
             st.badge("No urgent signs", icon=":material/check_circle:", color="green")
-    lang.markdown(f":material/translate: {session.record.preferred_language or 'English'}")
+    # The language opens the language question (it has no chip).
+    if lang.button(session.record.preferred_language or "English", key="lang_btn",
+                   type="tertiary", icon=":material/translate:", help="Change the language"):
+        ss.cursor = "preferred_language"
+        st.rerun()
     if leave.button("Exit", key="exit_intake", width="stretch",
                     help="Back to Home. The intake is kept so you can continue it."):
         ss.cursor = None
@@ -301,7 +310,9 @@ def progress_bar(session, question) -> None:
 
 def answer_chips(session) -> None:
     """Bottom strip: every answer so far as a small chip. Tap one to edit it."""
-    fields = [q.field for q in applicable(session) if q.field in session.answers]
+    # Intake answers only: the language is a setting, shown in the top bar.
+    fields = [q.field for q in applicable(session)
+              if q.field in session.answers and q.field != "preferred_language"]
     if not fields:
         return
 
@@ -322,58 +333,97 @@ def answer_chips(session) -> None:
                        f"{', '.join(session.pii_found)}")
 
 
+# Age is required. A typed age must be a number of years ("34") or months
+# for a baby ("8 months").
+AGE_YEARS_RE = re.compile(r"^\s*(\d{1,3})\s*(years?|yrs?|y)?\s*$", re.IGNORECASE)
+AGE_MONTHS_RE = re.compile(r"^\s*(\d{1,2})\s*(months?|mos?|m)\s*$", re.IGNORECASE)
+# "I don't know" estimates: (button label, the answer sent to the intake).
+# Each uses the OLDEST age in its group. The urgent breathing-rate limits get
+# lower as age goes up, so the oldest age fires more readily: a guess errs
+# towards a false alarm, never a missed danger sign.
+AGE_ESTIMATES = [("Child (under 12)", "11 (estimate: child)"),
+                 ("Adult (12 to 64)", "64 (estimate: adult)"),
+                 ("Older adult (65+)", "65 (estimate: older adult)")]
+
+
+def age_problem(text: str) -> str | None:
+    """None if the typed age is OK, else what to tell the caregiver."""
+    if not text.strip():
+        return "Age is needed. Type it, or tap \"I don't know\" to estimate."
+    if m := AGE_YEARS_RE.match(text):
+        return None if int(m.group(1)) <= 120 else "That age looks too high. Please check it."
+    if AGE_MONTHS_RE.match(text):
+        return None
+    return "Type a number of years (e.g. 34), or months for a baby (e.g. 8 months)."
+
+
 def question_card(session, question) -> None:
-    """The center card: one question, big answer buttons, an optional typed or
-    spoken answer, and the footer (Back on the left, Next on the right)."""
-    current = session.answers.get(question.field, "")
+    """The center card: the question, the typed answer right under it, a small
+    "Answer by voice" button, big answer buttons, then Back (left) and Next (right)."""
+    field = question.field
+    text_key, pending_key = f"ans-{field}", f"voice-pending-{field}"
+    current = session.answers.get(field, "")
     if current.strip().lower() == "skip":
         current = ""
+    # A voice transcript from the last run goes into the box before the box is drawn.
+    if pending_key in ss:
+        ss[text_key] = ss.pop(pending_key)
+    ss.setdefault(text_key, current)
+
     with st.container(border=True, key="question_card"):
         st.markdown(f'<div class="question">{question.text}</div>', unsafe_allow_html=True)
-        if question.hint:
-            st.markdown(f'<div class="hint">Example: {question.hint}</div>',
-                        unsafe_allow_html=True)
+        st.text_input("Answer", key=text_key, label_visibility="collapsed",
+                      placeholder=(f"e.g. {question.hint}" if question.hint else "Type the answer")
+                      + ("" if field == "age" else " · leave empty to skip"))
+        problem_box = st.empty()  # filled if the typed age is not valid
 
-        # Big answer buttons, three per row, full width. The current answer is highlighted.
-        choices = CHOICES.get(question.field, [])
-        for row in range(0, len(choices), 3):
-            cols = st.columns(3)
-            for col, (label, value) in zip(cols, choices[row:row + 3]):
-                chosen = current.strip().lower() == value.lower()
-                if col.button(label, key=f"choice-{question.field}-{label}", width="stretch",
-                              type="primary" if chosen else "secondary"):
-                    submit(session, question.field, value)
-
-        # Optional voice answer: transcribed into the text box below, where the
-        # caregiver can check it before tapping Next.
-        voice_key = f"voice-text-{question.field}"
-        with st.expander("Answer by voice", icon=":material/mic:"):
+        # Optional voice answer, as a small secondary button under the box.
+        if st.button("Answer by voice", key="voice_btn", type="tertiary", icon=":material/mic:"):
+            ss.voice_open = not ss.get("voice_open", False)
+        if ss.get("voice_open"):
             st.caption("Don't say the patient's name, phone number or address: the recording "
-                       "is sent to OpenAI to turn it into text.")
-            audio = st.audio_input("Record the answer", key=f"audio-{question.field}",
+                       "is sent to OpenAI to turn it into text. Check the text before Next.")
+            audio = st.audio_input("Record the answer", key=f"audio-{field}",
                                    label_visibility="collapsed")
-            if audio is not None and ss.get(f"{voice_key}-id") != audio.file_id:
+            if audio is not None and ss.get(f"{pending_key}-id") != audio.file_id:
                 with st.spinner("Turning speech into text..."):
-                    ss[voice_key] = transcribe(audio.getvalue())
-                ss[f"{voice_key}-id"] = audio.file_id  # don't transcribe the same clip twice
+                    ss[pending_key] = transcribe(audio.getvalue())
+                ss[f"{pending_key}-id"] = audio.file_id  # don't transcribe the same clip twice
+                st.rerun()
 
-        # The typed answer and the footer sit in a form, so Enter means Next
-        # and typing doesn't rerun the app on every key.
-        with st.form(f"form-{question.field}", border=False):
-            typed = st.text_input("Or type the answer" if choices else "Answer",
-                                  value=ss.get(voice_key, current),
-                                  placeholder="Type here, or leave empty to skip",
-                                  label_visibility="visible" if choices else "collapsed")
-            back, _, nxt = st.columns([1, 1, 2])
-            is_first = question.field == applicable(session)[0].field
-            pressed_back = back.form_submit_button("Back", width="stretch", disabled=is_first,
-                                                   icon=":material/arrow_back:")
-            pressed_next = nxt.form_submit_button("Next", type="primary", width="stretch",
-                                                  icon=":material/arrow_forward:")
+        # Big answer buttons, three per row. The current answer is highlighted.
+        choices = list(CHOICES.get(field, []))
+        if field == "age":
+            choices = [("I don't know", None)]
+            if ss.get("age_estimate_open"):
+                st.markdown('<div class="hint">About how old? Pick the closest group.</div>',
+                            unsafe_allow_html=True)
+                choices = AGE_ESTIMATES
+        for row in range(0, len(choices), 3):
+            for col, (label, value) in zip(st.columns(3), choices[row:row + 3]):
+                chosen = value is not None and current.strip().lower() == value.lower()
+                if col.button(label, key=f"choice-{field}-{label}", width="stretch",
+                              type="primary" if chosen else "secondary"):
+                    if value is None:  # "I don't know": show the estimate buttons
+                        ss.age_estimate_open = True
+                        st.rerun()
+                    submit(session, field, value)
+
+        # Footer: Back on the left (not on the first question), Next on the right.
+        back, _, nxt = st.columns([1, 1, 2])
+        is_first = field == applicable(session)[0].field
+        pressed_back = (not is_first) and back.button("Back", width="stretch",
+                                                      icon=":material/arrow_back:")
+        pressed_next = nxt.button("Next", type="primary", width="stretch",
+                                  icon=":material/arrow_forward:")
     if pressed_back:
         go_back(session, question)
     if pressed_next:
-        submit(session, question.field, typed)  # empty = skipped
+        typed = ss.get(text_key, "")
+        if field == "age" and (problem := age_problem(typed)):
+            problem_box.error(problem, icon=":material/error:")
+            return
+        submit(session, field, typed)  # empty = skipped (every question but age)
 
 
 def done_card(session) -> None:
