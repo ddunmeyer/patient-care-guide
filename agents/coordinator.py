@@ -16,6 +16,13 @@ Memory: a MemorySaver checkpointer saves the state after each run under a
 thread_id. The next call with the same thread_id starts from that saved state,
 so the agent remembers the member id and earlier questions.
 
+Tracing (observability/tracing.py): ask() opens one Langfuse trace per
+question, with session_id = thread_id and user_id = member id, and passes a
+Langfuse CallbackHandler into the graph config so every node, model call and
+tool call is recorded inside it. At the end the trace is tagged with the
+route ("route:benefits"). Only the redacted question is ever sent. Without
+Langfuse keys, tracing is skipped and everything else works the same.
+
 Try it from the terminal:
     python -m agents.coordinator
 """
@@ -32,6 +39,7 @@ from pydantic import BaseModel, Field  # describes the router's output shape
 
 from agents.specialists import benefits_agent, llm, prior_auth_agent
 from guardrails.checks import check_input, check_output
+from observability import tracing  # Langfuse helpers; do nothing without keys
 
 
 # --- State: the data passed from node to node, and saved between turns ---
@@ -118,6 +126,10 @@ def run_specialist(agent, name: str, state: State) -> State:
                 sources.append({"source": "members.json", "location": data["member_id"]})
             if msg.name == "draft_prior_auth_request" and "draft_id" in data:
                 draft = data
+                # The draft is built from the member record, so that record is
+                # its source. Without this, the output check flags a correct
+                # draft as "no sources".
+                sources.append({"source": "members.json", "location": data["member_id"]})
 
     return {
         "agent_used": name,
@@ -194,25 +206,61 @@ def ask(question: str, thread_id: str = "default", member_id: str | None = None,
     """
     report = on_step or (lambda step: None)  # do nothing if no callback given
 
-    # 1. Input check, before anything reaches the model or memory.
+    # 1. Input check, before anything reaches the model, memory or Langfuse.
+    # From here on we only use checked.text, the redacted question.
     checked = check_input(question)
     report("input_check")
-    if not checked.allowed:
-        return {
-            "question": checked.text,
-            "answer": "Sorry, I can't help with that request. "
-                      "I can answer questions about your Lakeshore Health PPO plan.",
-            "route": "blocked", "route_reason": checked.reason,
-            "agent_used": "none", "sources": [], "low_confidence": False,
-            "pending_draft": None,
-            "tools_called": [], "member_id": None,
-            "input_guardrail": vars(checked), "output_guardrail": None,
-        }
 
-    # 2-4. Run the graph on the cleaned text. The config tells the
-    # checkpointer which conversation to load and save.
+    # The config tells the checkpointer which conversation to load and save.
     config = {"configurable": {"thread_id": thread_id}}
-    inputs = {"question": checked.text, "messages": [("human", checked.text)]}
+
+    # Work out the member for the Langfuse user_id, in the same order the
+    # router uses: an id typed in the question, then the UI's id, then the
+    # id remembered from earlier turns of this thread.
+    match = MEMBER_ID_RE.search(checked.text)
+    if match:
+        user_id = match.group().upper()
+    else:
+        user_id = member_id or app.get_state(config).values.get("member_id")
+
+    # Open one Langfuse trace for this question (span is None if tracing is
+    # off). session_id = thread_id groups the turns of one conversation.
+    with tracing.trace_run(checked.text, session_id=thread_id, user_id=user_id) as span:
+        if checked.allowed:
+            result = run_graph(checked.text, config, member_id, report)
+        else:
+            result = blocked_result(checked)  # blocked questions skip the graph
+        # Now the route is known: tag the trace with it and save the answer.
+        tracing.finish_run(span, route=result["route"], answer=result["answer"])
+
+    # trace_id lets the evals attach scores to this run's trace.
+    trace_id = span.trace_id if span else None
+    return {**result, "input_guardrail": vars(checked), "trace_id": trace_id}
+
+
+def blocked_result(checked) -> dict:
+    """The result for a question the input check blocked."""
+    return {
+        "question": checked.text,
+        "answer": "Sorry, I can't help with that request. "
+                  "I can answer questions about your Lakeshore Health PPO plan.",
+        "route": "blocked", "route_reason": checked.reason,
+        "agent_used": "none", "sources": [], "low_confidence": False,
+        "pending_draft": None,
+        "tools_called": [], "member_id": None, "output_guardrail": None,
+    }
+
+
+def run_graph(text: str, config: dict, member_id: str | None, report) -> dict:
+    """Steps 2-4: run the graph (router -> specialist -> output check) on
+    the redacted text and return the final state."""
+    # Tracing: the CallbackHandler records every node, model call and tool
+    # call as a step inside the open trace. Skipped when tracing is off.
+    handler = tracing.get_handler()
+    if handler:
+        config = {**config, "callbacks": [handler]}
+
+    inputs = {"question": text, "messages": [("human", text)]}
     if member_id:
         inputs["member_id"] = member_id  # the router keeps it unless the question has one
 
@@ -225,8 +273,7 @@ def ask(question: str, thread_id: str = "default", member_id: str | None = None,
     # The checkpointer saved the final state; read it back.
     state = app.get_state(config).values
     # Leave the message history out of the result to keep it readable.
-    result = {k: v for k, v in state.items() if k != "messages"}
-    return {**result, "input_guardrail": vars(checked)}
+    return {k: v for k, v in state.items() if k != "messages"}
 
 
 def show(question: str, r: dict) -> None:
@@ -258,3 +305,4 @@ if __name__ == "__main__":
     ]
     for question, thread in tests:
         show(question, ask(question, thread_id=thread))
+    tracing.flush()  # send queued traces before the script exits

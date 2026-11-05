@@ -73,5 +73,5 @@ python -m agents.coordinator   # runs the memory and guardrail tests
 
 Then run `streamlit run app.py`.
 
-> Status: the RAG layer, agents, conversation memory (in RAM, per thread_id), rule-based guardrails and the Streamlit app work. Prior auth drafts are only saved to `data/approved_requests.json` after a person clicks Approve. Evals and Langfuse tracing are still skeletons.
+> Status: the RAG layer, agents, conversation memory (in RAM, per thread_id), rule-based guardrails and the Streamlit app work. Prior auth drafts are only saved to `data/approved_requests.json` after a person clicks Approve. Every question is traced in Langfuse (redacted text only; tracing is skipped if the keys are missing), and `python -m evals.run_eval` runs the 12-case eval suite and sends each pass/fail to Langfuse as a score.
 > Member data in `data/members.json` is fake.
