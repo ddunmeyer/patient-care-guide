@@ -1,0 +1,44 @@
+{
+  "M001": {
+    "name": "Jordan Rivera",
+    "plan": "Lakeshore Health PPO",
+    "coverage": "Individual",
+    "deductible": 1500,
+    "deductible_met": 1500,
+    "out_of_pocket_max": 6000,
+    "out_of_pocket_met": 2140,
+    "recent_claims": [
+      {"date": "2026-09-14", "service": "Specialist visit (dermatology)", "billed": 210, "member_paid": 50, "status": "paid"},
+      {"date": "2026-08-02", "service": "Outpatient surgery (knee arthroscopy)", "billed": 6800, "member_paid": 1560, "status": "paid"},
+      {"date": "2026-06-20", "service": "Primary care visit", "billed": 150, "member_paid": 25, "status": "paid"}
+    ]
+  },
+  "M002": {
+    "name": "Priya Shah",
+    "plan": "Lakeshore Health PPO",
+    "coverage": "Family",
+    "deductible": 3000,
+    "deductible_met": 620,
+    "out_of_pocket_max": 12000,
+    "out_of_pocket_met": 845,
+    "recent_claims": [
+      {"date": "2026-10-03", "service": "Specialist visit (orthopedics)", "billed": 260, "member_paid": 50, "status": "paid"},
+      {"date": "2026-09-28", "service": "X-ray, lower back", "billed": 320, "member_paid": 320, "status": "paid"},
+      {"date": "2026-07-11", "service": "Urgent care visit", "billed": 240, "member_paid": 75, "status": "paid"}
+    ]
+  },
+  "M003": {
+    "name": "Marcus Lee",
+    "plan": "Lakeshore Health PPO",
+    "coverage": "Individual",
+    "deductible": 1500,
+    "deductible_met": 0,
+    "out_of_pocket_max": 6000,
+    "out_of_pocket_met": 35,
+    "recent_claims": [
+      {"date": "2026-10-21", "service": "Telehealth visit", "billed": 80, "member_paid": 10, "status": "paid"},
+      {"date": "2026-10-21", "service": "Prescription: Lisinopril (Tier 1, 30-day)", "billed": 18, "member_paid": 10, "status": "paid"},
+      {"date": "2026-05-09", "service": "Preventive care and annual physical", "billed": 290, "member_paid": 0, "status": "paid"}
+    ]
+  }
+}

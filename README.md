@@ -43,6 +43,7 @@ flowchart LR
 | `guardrails/checks.py` | Input and output safety checks |
 | `evals/eval_set.json` | Test questions with expected answers |
 | `evals/run_eval.py` | Scores the pipeline against the test set |
+| `data/members.json` | Fake member records used by the `lookup_member` tool |
 | `data/docs/` | Source documents (sample: fictional Lakeshore Health PPO plan) |
 
 ## Setup
@@ -67,8 +68,10 @@ Build the vector store and ask a question from the terminal:
 ```powershell
 python -m rag.ingest
 python -m rag.retriever "Is an MRI covered and does it need prior authorization?"
+python -m agents.coordinator   # runs three sample questions through the agents
 ```
 
 Then run `streamlit run app.py`.
 
-> Status: the RAG layer (`rag/`) works. Agents, guardrails, evals and the app are still skeletons.
+> Status: the RAG layer (`rag/`) and agent layer (`agents/`) work. Guardrails, evals, Langfuse tracing and the app are still skeletons.
+> Member data in `data/members.json` is fake.
