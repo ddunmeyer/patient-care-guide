@@ -7,7 +7,7 @@ link and every trial's details from the tool results.
 """
 
 from agents.care_evidence import EvidenceCatalog
-from agents.care_models import NO_DATA, PatientSheet, Point, SourceRef
+from agents.care_models import NO_DATA, Briefing, PatientSheet, Point, SourceRef
 
 
 def _sources_used(sections: list[list[Point]], catalog: EvidenceCatalog,
@@ -43,3 +43,28 @@ def ground_sheet(sheet: PatientSheet, catalog: EvidenceCatalog) -> tuple[Patient
     sheet.sources = _sources_used([getattr(sheet, n) for n in sections], catalog,
                                   [s.nct_id for s in studies])
     return sheet, report
+
+
+def ground_briefing(briefing: Briefing, catalog: EvidenceCatalog) -> tuple[Briefing, list[str]]:
+    """Fill in trial details and sources on a Care Team Briefing.
+    Returns (briefing, list of notes about what was changed)."""
+    report: list[str] = []
+    soc = briefing.standard_of_care
+    soc_sections = ["first_line", "second_line", "supportive_care", "when_to_refer"]
+    for name in soc_sections:
+        setattr(soc, name, _no_data_if_empty(getattr(soc, name)))
+    briefing.overview = _no_data_if_empty(briefing.overview)
+
+    treatments = []
+    for t in briefing.emerging_treatments:
+        trial = catalog.trials.get(t.nct_id.strip().upper())
+        if trial:
+            treatments.append(t.model_copy(update={
+                "nct_id": trial["nct_id"], "phase": trial["phase"], "status": trial["status"],
+                "sponsor": trial["lead_sponsor"], "url": trial["url"]}))
+    briefing.emerging_treatments = treatments
+
+    soc.sources = _sources_used([getattr(soc, n) for n in soc_sections], catalog)
+    briefing.sources = _sources_used([briefing.overview] + [getattr(soc, n) for n in soc_sections],
+                                     catalog, [t.nct_id for t in treatments])
+    return briefing, report
