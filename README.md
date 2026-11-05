@@ -40,7 +40,7 @@ flowchart LR
 | `agents/tools.py` | Tools the agents can call, such as document search |
 | `rag/ingest.py` | Loads .md, .txt and .pdf files from `data/docs/` into ChromaDB |
 | `rag/retriever.py` | Finds relevant chunks and answers from them with citations |
-| `guardrails/checks.py` | Input and output safety checks |
+| `guardrails/checks.py` | PII redaction, prompt-injection blocking, medical-advice blocking, missing-source flag |
 | `evals/eval_set.json` | Test questions with expected answers |
 | `evals/run_eval.py` | Scores the pipeline against the test set |
 | `data/members.json` | Fake member records used by the `lookup_member` tool |
@@ -68,10 +68,10 @@ Build the vector store and ask a question from the terminal:
 ```powershell
 python -m rag.ingest
 python -m rag.retriever "Is an MRI covered and does it need prior authorization?"
-python -m agents.coordinator   # runs three sample questions through the agents
+python -m agents.coordinator   # runs the memory and guardrail tests
 ```
 
 Then run `streamlit run app.py`.
 
-> Status: the RAG layer (`rag/`) and agent layer (`agents/`) work. Guardrails, evals, Langfuse tracing and the app are still skeletons.
+> Status: the RAG layer, agents, conversation memory (in RAM, per thread_id) and rule-based guardrails work. Evals, Langfuse tracing and the app are still skeletons.
 > Member data in `data/members.json` is fake.

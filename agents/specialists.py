@@ -17,6 +17,9 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)  # 0 = consistent answers
 # Rules every specialist follows. Each prompt below adds its own job.
 COMMON_RULES = """Rules:
 - Answer ONLY from what your tools return. Never guess plan details.
+- Write specific search queries, not single words (search "copays for
+  office visits, urgent care and emergency room", not "copay"). If a question
+  is broad, search for the common cases and list them.
 - Cite sources from search_plan_documents in square brackets, like
   [summary_of_benefits.md].
 - If the member gives a member id, use lookup_member to tailor the answer.
