@@ -10,8 +10,8 @@ It is plain Python, so the model cannot talk its way past it. Rules:
   2. Every research study and emerging treatment must have an NCT id that
      came back from clinicaltrials_search. Others are dropped. Studies on the
      patient sheet must also be RECRUITING. Phase, status, sponsor, title,
-     countries and link are copied from the trial record; the treatment name
-     must be one of that trial's interventions.
+     countries, type and link are copied from the trial record; the name
+     must be one of that trial's interventions, with any dose cut off.
   3. Every company or institution must appear in a tool result. Names from
      model memory are dropped. Names are re-sorted into companies /
      academic / government-NGO with simple keyword rules.
@@ -140,6 +140,22 @@ def _intervention_name(model_name: str, trial: dict) -> str:
     return " + ".join(real[:3]) or trial["title"]
 
 
+def _treatment_type(model_type: str, trial: dict) -> str:
+    """The type from the registry's own intervention types, not the model.
+    ClinicalTrials.gov says DRUG, BIOLOGICAL, DEVICE, GENETIC, ..."""
+    types = {(i.get("type") or "").upper() for i in trial["interventions"]}
+    text = (trial["title"] + " " + " ".join(i["name"] or "" for i in trial["interventions"])).lower()
+    if "GENETIC" in types or "gene therap" in text:
+        return "gene therapy"
+    if "vaccin" in text:
+        return "vaccine"
+    if "DEVICE" in types:
+        return "device"
+    if types & {"DRUG", "BIOLOGICAL", "COMBINATION_PRODUCT"}:
+        return "drug"
+    return model_type if model_type in ("drug", "vaccine", "device", "gene therapy") else "other"
+
+
 # --- Rule 3: organisations ---
 def _norm(name: str) -> str:
     """'Shanghai Jiatan Pharmatech Co., Ltd.' -> 'shanghai jiatan pharmatech co ltd'."""
@@ -251,6 +267,7 @@ def ground_briefing(briefing: Briefing, catalog: EvidenceCatalog) -> tuple[Brief
             continue
         treatments.append(t.model_copy(update={
             "name": _intervention_name(t.name, trial), "nct_id": trial["nct_id"],
+            "type": _treatment_type(t.type, trial),
             "phase": trial["phase"], "status": trial["status"],
             "sponsor": trial["lead_sponsor"], "url": trial["url"]}))
     if dropped:

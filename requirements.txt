@@ -126,3 +126,4 @@ xxhash==4.0.2
 yarl==1.25.1
 zstandard==0.25.0
 textstat==0.7.13
+fpdf2==2.9.0

@@ -10,7 +10,7 @@ links and the trial details from the tool results.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 NO_DATA = "No current data found."
 DISCLAIMER = ("This is general information, not medical advice. "
@@ -69,9 +69,20 @@ class StandardOfCare(BaseModel):
     sources: list[SourceRef] = []
 
 
+TREATMENT_TYPES = ("drug", "vaccine", "device", "gene therapy", "other")
+
+
 class EmergingTreatment(BaseModel):
     name: str = Field(description="The intervention being tested, from the trial list.")
     type: Literal["drug", "vaccine", "device", "gene therapy", "other"]
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _known_type(cls, value):
+        """The model sometimes copies registry words ("biological"); anything
+        not in the list becomes "other". Grounding then sets the real type."""
+        value = str(value).lower().replace("_", " ")
+        return value if value in TREATMENT_TYPES else "other"
     nct_id: str = Field(description="NCT id copied exactly from the trial list.")
     # Filled in by Python from ClinicalTrials.gov, not by the model:
     phase: str = ""
