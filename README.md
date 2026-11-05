@@ -38,12 +38,12 @@ flowchart LR
 | `agents/coordinator.py` | Routes questions to specialists and assembles the answer |
 | `agents/specialists.py` | Specialist agents that do the work |
 | `agents/tools.py` | Tools the agents can call, such as document search |
-| `rag/ingest.py` | Loads PDFs from `data/docs/` into ChromaDB |
-| `rag/retriever.py` | Finds relevant chunks for a question |
+| `rag/ingest.py` | Loads .md, .txt and .pdf files from `data/docs/` into ChromaDB |
+| `rag/retriever.py` | Finds relevant chunks and answers from them with citations |
 | `guardrails/checks.py` | Input and output safety checks |
 | `evals/eval_set.json` | Test questions with expected answers |
 | `evals/run_eval.py` | Scores the pipeline against the test set |
-| `data/docs/` | Put your source PDFs here |
+| `data/docs/` | Source documents (sample: fictional Lakeshore Health PPO plan) |
 
 ## Setup
 
@@ -62,6 +62,13 @@ LANGFUSE_SECRET_KEY=...
 LANGFUSE_HOST=https://us.cloud.langfuse.com
 ```
 
+Build the vector store and ask a question from the terminal:
+
+```powershell
+python -m rag.ingest
+python -m rag.retriever "Is an MRI covered and does it need prior authorization?"
+```
+
 Then run `streamlit run app.py`.
 
-> Status: skeleton only. The modules describe their jobs but contain no logic yet.
+> Status: the RAG layer (`rag/`) works. Agents, guardrails, evals and the app are still skeletons.
