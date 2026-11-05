@@ -17,3 +17,6 @@ data/approved_requests.json
 # Not needed in the image
 .git
 .vscode
+
+# Patient records and the tool cache (SQLite) never go into the image
+data/*.db

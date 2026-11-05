@@ -15,6 +15,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# A Unicode font so the Patient Info Sheet PDF can show accents and other
+# scripts (agents/care_export.py looks for DejaVu Sans).
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-dejavu-core     && rm -rf /var/lib/apt/lists/*
+
 # Install packages first so this layer is cached when only code changes.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -28,5 +32,8 @@ RUN --mount=type=secret,id=openai_api_key,required=true \
     OPENAI_API_KEY="$(cat /run/secrets/openai_api_key)" python -m rag.ingest
 
 EXPOSE 8501
+
+# Starts the member assistant. For the Patient Intake & Condition Guide, add
+# this to docker run:  streamlit run care_app.py --server.address 0.0.0.0
 
 CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0"]

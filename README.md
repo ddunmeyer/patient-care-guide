@@ -1,4 +1,247 @@
-# Agentic RAG Starter Kit
+# Patient Intake & Condition Guide
+
+For places where a doctor isn't readily available. A caregiver (community
+health worker, nurse, medic or family caregiver) uses it with the patient to:
+
+1. **Do a structured patient intake**, one plain-language question at a time.
+2. **Give the patient a plain-language info sheet** about their condition, at
+   about a 6th-grade reading level, in their preferred language.
+3. **Give the care team a structured briefing**: current standard of care,
+   emerging treatments in clinical trials, and the key companies and
+   institutions.
+
+**The app does not diagnose.** The condition is the one a health worker told
+the patient about ("I was told I have ___"), or one the caregiver enters. It
+never gives doses and never tells anyone to start, stop or change a medicine.
+
+It is built on this repo's agentic starter kit (LangGraph, LangChain, OpenAI
+gpt-4o-mini, guardrails, Streamlit, Langfuse, evals). The original health-plan
+member assistant is still here and documented further down.
+
+## How it works
+
+```mermaid
+flowchart TD
+    CG[Caregiver + patient] --> UI[Streamlit app<br/>care_app.py]
+    UI --> IA[IntakeAgent<br/>one question at a time]
+    IA --> PII{{PII masking<br/>names, phones, addresses}}
+    PII --> REC[IntakeRecord<br/>patient_id only]
+    REC --> URG{{Urgent signs check<br/>plain Python rules}}
+    URG -- danger sign --> STOP[STOP: Get emergency care now<br/>banner + first-aid steps]
+    URG -- none --> LK[Lookup tools, cached 24h<br/>ClinicalTrials.gov, PubMed, openFDA,<br/>MedlinePlus, Tavily web search]
+    LK --> EV[Numbered evidence<br/>M1, P1, D1, W1, NCT ids]
+    EV --> PE[PatientEducationAgent]
+    EV --> BA[BriefingAgent]
+    PE --> GR{{Grounding guardrail<br/>sources, real NCT ids,<br/>real organisations, no doses}}
+    BA --> GR
+    GR --> REV[Caregiver reviews and edits<br/>both drafts]
+    REV -- Approve --> DB[(SQLite<br/>approved records only)]
+    DB --> EX[Exports: patient PDF + SMS,<br/>care team PDF + Markdown]
+    LF[Langfuse tracing] -.-> URG
+    LF -.-> PE
+    LF -.-> BA
+```
+
+## Files
+
+| Path | Job |
+| --- | --- |
+| `care_app.py` | Streamlit app: New Intake, Patient Info Sheet, Care Team Briefing, Patient History |
+| `agents/intake_models.py`, `agents/intake_agent.py` | The IntakeRecord and the question-by-question IntakeAgent |
+| `guardrails/intake_pii.py` | Masks names, phone numbers and addresses before any model call |
+| `triage/urgent_signs.py` | Urgent signs check: plain Python rules, never the model |
+| `tools/` | `clinicaltrials_search`, `pubmed_search`, `openfda_drugs`, `medlineplus_lookup`, `web_search`, the 24-hour SQLite cache, and `evidence.py` to run them all |
+| `agents/care_evidence.py` | Numbers the tool results (M1, P1, D1, W1, NCT ids) for the agents to cite |
+| `agents/care_models.py` | Pydantic shapes of the Patient Info Sheet and the Care Team Briefing |
+| `agents/patient_education.py` | PatientEducationAgent (plain-language sheet) |
+| `agents/briefing.py` | BriefingAgent (care team briefing) |
+| `guardrails/grounding.py` | Output guardrail: grounding rules and the dose / prescribe / diagnose block |
+| `agents/care_coordinator.py` | LangGraph flow: urgent check, then lookup, then both agents in parallel |
+| `agents/care_store.py` | Saves approved records to `data/care_records.db` |
+| `agents/care_export.py` | Patient PDF and SMS; care team PDF and Markdown |
+| `evals/intake_cases.json`, `evals/condition_cases.json`, `evals/run_care_eval.py` | The eval |
+
+## How to run
+
+Needs Python 3.12 or newer (tested on 3.14).
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env    # then fill in your keys
+```
+
+`.env` needs `OPENAI_API_KEY`. The Langfuse keys are optional: without them
+tracing is off. `TAVILY_API_KEY` is optional too: without it web search is
+off. The other four lookups need no key. Web search adds current WHO, CDC and
+NICE guideline pages, so sections like "what you can do at home" are fuller.
+
+Build the vector store once (the kit's member assistant uses it, and the
+shared agent code opens it):
+
+```powershell
+python -m rag.ingest
+```
+
+Start the app:
+
+```powershell
+streamlit run care_app.py
+```
+
+Then open http://localhost:8501:
+
+1. **New Intake**: optionally type the patient's name (it is used only to hide
+   the name in answers), then click **Start new intake** and answer each
+   question. Try "chest pain and sweating a lot" as the main problem to see
+   the emergency stop.
+2. When the intake is done, check the condition and click **Make patient sheet
+   and care team briefing** (about 15-40 seconds).
+3. Review and edit both drafts, tick **I reviewed...** on each, then click
+   **Approve and save**.
+4. **Patient History**: download the patient PDF, the SMS text, or the care
+   team PDF / Markdown.
+
+Each piece can also be tried from the terminal:
+
+```powershell
+python -m triage.urgent_signs              # urgent signs rules on 5 examples
+python -m tools.clinicaltrials malaria     # any of the five tools
+python -m agents.patient_education malaria
+python -m agents.briefing tuberculosis
+python -m agents.care_coordinator          # one urgent and one calm patient
+```
+
+### Run the eval
+
+```powershell
+python -m evals.run_care_eval              # all 15 cases
+python -m evals.run_care_eval intake       # the 10 intake cases only (fast)
+python -m evals.run_care_eval condition    # the 5 condition cases only
+```
+
+- **10 intake cases**: 8 urgent cases (one for each danger sign, including
+  shock found from the vitals alone) and 2 calm ones. They check that every
+  urgent case stops with the right sign and that the coordinator stops too.
+  They also check that calm cases don't stop, that the required fields are
+  filled, and that names, phone numbers and addresses are masked. **A missed
+  urgent case is an automatic FAIL.**
+- **5 condition cases**: malaria, tuberculosis, type 2 diabetes, sickle cell
+  disease and hypertension. They check that:
+  - every section is present;
+  - every NCT ID and every organisation appears in the raw tool output;
+  - the sheet and the briefing each cite 3 or more sources;
+  - the sheet reads at grade 8 or below (textstat);
+  - nothing gives a dose, prescribes or diagnoses.
+- With Langfuse keys, each case's pass/fail is sent as an `eval_pass` score
+  on its trace, with the time in the comment. Langfuse also shows each run's
+  duration.
+
+Last run: intake 10/10, conditions 5/5 (median 13 seconds per condition).
+
+### Docker
+
+Build the image the same way as the original kit (see **Deploy** below), then
+start the care guide instead of the member assistant:
+
+```powershell
+docker run -p 8501:8501 -e OPENAI_API_KEY -e TAVILY_API_KEY `
+  -e LANGFUSE_PUBLIC_KEY -e LANGFUSE_SECRET_KEY -e LANGFUSE_HOST `
+  agentic-starter-kit streamlit run care_app.py --server.address 0.0.0.0
+```
+
+Approved records are saved in `/app/data/care_records.db` inside the
+container. To keep them, mount a folder for that one file. Don't mount over
+all of `/app/data`.
+
+## Safety notes
+
+- **Urgent signs come first and can't be overridden.** After every answer,
+  `triage/urgent_signs.py` checks for:
+  - severe trouble breathing;
+  - being unconscious or very hard to wake;
+  - convulsions;
+  - chest pain with sweating;
+  - heavy bleeding;
+  - being unable to drink or keep anything down;
+  - signs of shock (including very low blood pressure or a very high pulse);
+  - pregnancy with any bleeding.
+
+  These are plain Python rules. On any match, the intake stops and the
+  **Get emergency care now** banner appears with simple first-aid steps. The
+  coordinator runs the same check first and ends before any model or tool
+  call. The rules lean towards safety: a false alarm costs a trip to the
+  clinic, while a missed sign can cost a life. Negated phrases ("no chest
+  pain") don't trigger them.
+- **No diagnosis, no prescribing, no doses.** The prompts forbid all three.
+  The grounding guardrail then removes any line that matches dose,
+  prescribing or diagnosis patterns, including doses inside trial
+  intervention names. The app also warns about a caregiver's own edits that
+  match these patterns, and Approve stays off until they are changed.
+- **Personal details stay local.** Names, phone numbers, addresses, emails
+  and dates are masked before anything reaches OpenAI or Langfuse. Model
+  calls use the `patient_id`, never the name, and the name typed in the app
+  is never saved. Safety notes on the sheet (pregnancy, allergies, current
+  medicines, other conditions, young child) are written by Python from the
+  intake, so the model can't leave them out.
+- **A person approves everything.** Drafts are not saved. Only records the
+  caregiver has reviewed and approved go into SQLite, and only approved
+  records can be exported.
+- **Every sheet carries the disclaimer:** "This is general information, not
+  medical advice. Talk to a health worker about your care."
+- **No patient data in git or the image.** `data/*.db` is in `.gitignore`
+  and `.dockerignore`, and `.env` is never committed.
+
+## How answers stay grounded
+
+1. **Look up first, then write.** The coordinator runs the five lookup tools
+   once. Both agents read only that evidence, as a numbered list: `M1`
+   (MedlinePlus), `P1` (PubMed review with abstract), `D1` (FDA label), `W1`
+   (web page from a trusted site) and real NCT IDs (ClinicalTrials.gov). The
+   prompts say to use nothing else.
+2. **Every fact is a Point with source ids.** The model must attach ids such
+   as `["M1", "P2"]` to each statement.
+3. **Python checks the draft** (`guardrails/grounding.py`):
+   - ids that don't exist are removed, and a point left with no real source
+     is dropped;
+   - a research study or emerging treatment is kept only if its NCT ID came
+     back from `clinicaltrials_search`. Studies offered to the patient must
+     also be **recruiting**;
+   - a company or institution is kept only if its name appears in a tool
+     result. Names from the model's memory are dropped, and organisations are
+     sorted into companies, academic, and government/NGO by keyword rules;
+   - a section left empty says **"No current data found."**
+4. **Python, not the model, writes the facts that are easy to get wrong.**
+   It writes every source title and link, every trial's phase, status,
+   sponsor, countries and link, and the intervention names (copied from the
+   registry with doses cut off).
+5. **The eval checks the guardrail.** It reads the raw tool output itself and
+   fails a case if any NCT ID or organisation in the output isn't there.
+
+What this does *not* prove: the guardrail checks that a cited source exists,
+not that the source really says what the sentence says. The caregiver review
+step is there for that. The cited ids stay visible in the editor so the
+caregiver can check them.
+
+## Known limitations
+
+- **English headings on translated sheets.** Section headings and the
+  disclaimer on the PDF are in English even when the content is in another
+  language.
+- **The reading-level check is English-only** (textstat's Flesch-Kincaid).
+- **openFDA lists US-approved labels**, including repackagers. It shows which
+  drugs are approved for a condition in the US, not what is available
+  locally.
+- **The urgent rules are keyword rules.** They catch the listed phrasings and
+  vitals cut-offs, but an unusual description of a danger sign can be
+  missed. Train caregivers to trust their own judgement first.
+- **Without a Tavily key**, standard-of-care points come mainly from PubMed
+  abstracts, and "what you can do at home" is often "No current data found."
+
+---
+
+## The original kit: Agentic RAG Starter Kit
 
 A question-answering assistant for members of a health plan, built over the
 plan's own documents. A coordinator agent sends each question to a specialist
@@ -12,7 +255,7 @@ The sample data is a fictional plan, Lakeshore Health PPO, with fake members.
 Built with LangChain, LangGraph, ChromaDB, OpenAI (gpt-4o-mini and
 text-embedding-3-small) and Streamlit.
 
-## Architecture
+### Architecture
 
 ```mermaid
 flowchart LR
@@ -36,7 +279,7 @@ flowchart LR
     LF -.-> T
 ```
 
-## Project layout
+### Project layout
 
 | Path | Job |
 | --- | --- |
@@ -54,7 +297,7 @@ flowchart LR
 | `data/members.json` | Fake member records used by the `lookup_member` tool |
 | `Dockerfile`, `.dockerignore` | Container image (see Deploy) |
 
-## Setup
+### Setup
 
 Needs Python 3.12 or newer (tested on 3.14).
 
@@ -80,7 +323,7 @@ Build the vector store (run it again whenever the documents change):
 python -m rag.ingest
 ```
 
-## Run the app
+### Run the app
 
 ```powershell
 streamlit run app.py
@@ -96,7 +339,7 @@ python -m rag.retriever "Is an MRI covered and does it need prior authorization?
 python -m agents.coordinator   # runs the memory and guardrail tests
 ```
 
-## Run the eval
+### Run the eval
 
 ```powershell
 python -m evals.run_eval
@@ -109,7 +352,7 @@ draft is created) and the guardrails. It prints a results table, the pass rate
 and the median and p95 latency. With Langfuse keys set, each result is also
 sent to Langfuse as a score on that case's trace.
 
-## Deploy
+### Deploy
 
 The `Dockerfile` installs the packages, builds the vector store with
 `python -m rag.ingest` during the build, and serves the app on port 8501.
@@ -140,7 +383,7 @@ on the host first (containing `[]`) and add
 command. Don't mount over all of `/app/data`, because the app reads
 `members.json` and the documents from there.
 
-## Design choices
+### Design choices
 
 - **A router plus specialists, not one big agent.** The router uses structured
   output, so it can only return `benefits`, `prior_auth` or `out_of_scope`.
@@ -171,7 +414,7 @@ command. Don't mount over all of `/app/data`, because the app reads
 - **gpt-4o-mini at temperature 0.** It is cheap and fast enough for a demo,
   and temperature 0 keeps answers consistent between runs.
 
-## Known limitations
+### Known limitations
 
 - **The data is a demo.** There are three short plan documents and three fake
   members. Nothing is connected to real claims or eligibility systems, and
