@@ -55,10 +55,20 @@ Rules:
 
 def make_briefing(condition: str, catalog: EvidenceCatalog) -> tuple[Briefing, list[str]]:
     """Write and ground the briefing. Returns (briefing, guardrail notes)."""
-    draft = llm.with_structured_output(Briefing, method="function_calling").invoke(
-        [("system", BRIEFING_PROMPT.format(condition=condition)),
-         ("human", f"EVIDENCE:\n{catalog.prompt_text()}")],
-        config={"run_name": "briefing_agent"})
+    messages = [("system", BRIEFING_PROMPT.format(condition=condition)),
+                ("human", f"EVIDENCE:\n{catalog.prompt_text()}")]
+    writer = llm.with_structured_output(Briefing, method="function_calling")
+    draft = writer.invoke(messages, config={"run_name": "briefing_agent"})
+
+    # The model sometimes stops early and leaves sections out. If there are
+    # trials in the evidence but the draft has no treatments or organisations,
+    # ask once more.
+    players = draft.key_players
+    empty = not (players.companies or players.academic_institutions or players.government_ngo)
+    if catalog.trials and (not draft.emerging_treatments or empty):
+        draft = writer.invoke(messages + [("human", "Your answer left out emerging_treatments "
+                                           "or key_players. Fill in every section.")],
+                              config={"run_name": "briefing_agent_retry"})
     draft.condition = condition
     draft.generated_at = datetime.now().isoformat(timespec="minutes")
     return ground_briefing(draft, catalog)

@@ -137,7 +137,12 @@ def sheet_sms(sheet: PatientSheet) -> str:
     head = f"{sheet.condition.upper()}: "
     tail = f" {sheet.disclaimer}"
     optional = [first(sheet.what_it_is)]
-    warnings = [p.text.rstrip(".") for p in sheet.warning_signs_get_help_now if p.text != NO_DATA]
+    # "Seek help if you have a high fever" -> "a high fever" (the SMS already says GET HELP NOW).
+    lead_in = re.compile(r"^(seek|get|go for|go to a clinic|go to the clinic|get medical)\s*"
+                         r"(help|care|medical help)?\s*(now|right away)?\s*if\s+(you\s+(have|feel|are)\s+)?",
+                         re.IGNORECASE)
+    warnings = [lead_in.sub("", p.text).rstrip(".") for p in sheet.warning_signs_get_help_now
+                if p.text != NO_DATA]
     if warnings:
         optional.append("GET HELP NOW if: " + "; ".join(warnings[:3]) + ".")
     optional += sheet.personal_notes[:2]

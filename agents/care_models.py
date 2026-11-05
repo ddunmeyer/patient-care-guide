@@ -48,13 +48,15 @@ class StudyMention(BaseModel):
 class PatientSheet(BaseModel):
     condition: str
     language: str = "English"
-    what_it_is: list[Point]
-    common_signs: list[Point]
-    how_it_is_usually_treated: list[Point]
-    what_you_can_do_at_home: list[Point]
-    warning_signs_get_help_now: list[Point]
-    questions_to_ask_your_health_worker: list[str]
-    research_studies_you_can_ask_about: list[StudyMention]
+    # Every section defaults to empty: if the model leaves one out, the
+    # grounding guardrail shows "No current data found." instead of crashing.
+    what_it_is: list[Point] = []
+    common_signs: list[Point] = []
+    how_it_is_usually_treated: list[Point] = []
+    what_you_can_do_at_home: list[Point] = []
+    warning_signs_get_help_now: list[Point] = []
+    questions_to_ask_your_health_worker: list[str] = []
+    research_studies_you_can_ask_about: list[StudyMention] = []
     personal_notes: list[str] = []  # from the intake: pregnancy, allergies, medicines
     sources: list[SourceRef] = []
     disclaimer: str = DISCLAIMER
@@ -62,10 +64,10 @@ class PatientSheet(BaseModel):
 
 # --- Care Team Briefing ---
 class StandardOfCare(BaseModel):
-    first_line: list[Point]
-    second_line: list[Point]
-    supportive_care: list[Point]
-    when_to_refer: list[Point]
+    first_line: list[Point] = []
+    second_line: list[Point] = []
+    supportive_care: list[Point] = []
+    when_to_refer: list[Point] = []
     sources: list[SourceRef] = []
 
 
@@ -98,19 +100,20 @@ class Player(BaseModel):
 
 
 class KeyPlayers(BaseModel):
-    companies: list[Player]
-    academic_institutions: list[Player]
-    government_ngo: list[Player]
+    companies: list[Player] = []
+    academic_institutions: list[Player] = []
+    government_ngo: list[Player] = []
 
 
 class Briefing(BaseModel):
     condition: str
     generated_at: str = ""  # set by Python
-    overview: list[Point] = Field(description="2-3 sentences, each with its sources.")
-    standard_of_care: StandardOfCare
-    emerging_treatments: list[EmergingTreatment]
-    key_players: KeyPlayers
-    field_relevance: str = Field(description="2-3 lines: what this means in a clinic with "
+    # Defaults: a section the model leaves out becomes "No current data found."
+    overview: list[Point] = Field(default=[], description="2-3 sentences, each with its sources.")
+    standard_of_care: StandardOfCare = StandardOfCare()
+    emerging_treatments: list[EmergingTreatment] = []
+    key_players: KeyPlayers = KeyPlayers()
+    field_relevance: str = Field(default="", description="2-3 lines: what this means in a clinic with "
                                              "few doctors, little equipment and few drugs.")
     sources: list[SourceRef] = []
     disclaimer: str = BRIEFING_DISCLAIMER
