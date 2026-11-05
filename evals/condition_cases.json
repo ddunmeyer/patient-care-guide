@@ -1,0 +1,16 @@
+{
+  "_purpose": "Condition test cases for evals/run_care_eval.py. Each runs the full flow (lookup tools, Patient Info Sheet, Care Team Briefing, grounding) for a calm intake with this reported condition. The patient fields make the sheet's personal notes non-trivial.",
+  "items": [
+    {"id": "malaria", "condition": "malaria",
+     "patient": {"age": 24, "sex": "female", "pregnant": true, "allergies": ["sulfa drugs"]}},
+    {"id": "tuberculosis", "condition": "tuberculosis",
+     "patient": {"age": 31, "sex": "male", "current_meds": ["herbal tea"]}},
+    {"id": "type_2_diabetes", "condition": "type 2 diabetes",
+     "patient": {"age": 52, "sex": "male", "known_conditions": ["high blood pressure"],
+                 "current_meds": ["metformin"]}},
+    {"id": "sickle_cell", "condition": "sickle cell disease",
+     "patient": {"age": 4, "sex": "female"}},
+    {"id": "hypertension", "condition": "hypertension",
+     "patient": {"age": 63, "sex": "female", "allergies": ["penicillin"]}}
+  ]
+}
