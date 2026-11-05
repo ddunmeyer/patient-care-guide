@@ -7,7 +7,7 @@
 # documents, so the build reads it from a BuildKit secret that is mounted only
 # for that one step. At runtime, pass the keys as environment variables.
 
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Don't write .pyc files, and print logs straight away.
 ENV PYTHONDONTWRITEBYTECODE=1 \

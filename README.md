@@ -1,12 +1,16 @@
 # Agentic RAG Starter Kit
 
-A starter project for a question-answering assistant over your own PDF documents.
-A coordinator agent passes each question to specialist agents. The specialists
-use tools to search a ChromaDB vector store of your documents, and the answer
-comes back with citations. Guardrails check questions and answers, and Langfuse
-traces every run.
+A question-answering assistant for members of a health plan, built over the
+plan's own documents. A coordinator agent sends each question to a specialist
+agent. The specialists use tools to search a ChromaDB vector store of the
+documents and to look up member records, and every answer cites its sources.
+Guardrails check each question and answer. Prior authorization requests are
+only drafted, and a person must approve them. Langfuse traces every run.
 
-Built with LangChain, LangGraph, ChromaDB, OpenAI and Streamlit.
+The sample data is a fictional plan, Lakeshore Health PPO, with fake members.
+
+Built with LangChain, LangGraph, ChromaDB, OpenAI (gpt-4o-mini and
+text-embedding-3-small) and Streamlit.
 
 ## Architecture
 
@@ -14,17 +18,19 @@ Built with LangChain, LangGraph, ChromaDB, OpenAI and Streamlit.
 flowchart LR
     U[User] --> S[Streamlit app<br/>app.py]
     S --> G1{{Guardrails<br/>input checks}}
-    G1 --> C[Coordinator agent<br/>agents/coordinator.py]
+    G1 --> C[Coordinator / router<br/>agents/coordinator.py]
     C --> SP[Specialist agents<br/>agents/specialists.py]
     SP --> T[Tools<br/>agents/tools.py]
     T --> R[Retriever<br/>rag/retriever.py]
+    T --> M[(Member records<br/>data/members.json)]
     R --> DB[(ChromaDB<br/>chroma_db/)]
     I[Ingest<br/>rag/ingest.py] --> DB
-    P[PDFs<br/>data/docs/] --> I
-    SP --> C
-    C --> G2{{Guardrails<br/>output checks}}
+    P[Plan documents<br/>data/docs/] --> I
+    SP --> G2{{Guardrails<br/>output checks}}
     G2 --> A[Answer with citations]
     A --> S
+    S --> H[Human approval<br/>of prior auth drafts]
+    H --> AR[(data/approved_requests.json)]
     LF[Langfuse tracing] -.-> C
     LF -.-> SP
     LF -.-> T
@@ -34,19 +40,23 @@ flowchart LR
 
 | Path | Job |
 | --- | --- |
-| `app.py` | Streamlit chat UI (entry point) |
-| `agents/coordinator.py` | Routes questions to specialists and assembles the answer |
-| `agents/specialists.py` | Specialist agents that do the work |
-| `agents/tools.py` | Tools the agents can call, such as document search |
+| `app.py` | Streamlit chat UI (entry point) with step progress, sources, guardrail notices and Approve / Reject for drafts |
+| `agents/coordinator.py` | LangGraph graph: router, specialists, output check, conversation memory |
+| `agents/specialists.py` | Two ReAct agents: Benefits and Prior Auth |
+| `agents/tools.py` | `search_plan_documents`, `lookup_member`, `draft_prior_auth_request` |
 | `rag/ingest.py` | Loads .md, .txt and .pdf files from `data/docs/` into ChromaDB |
-| `rag/retriever.py` | Finds relevant chunks and answers from them with citations |
+| `rag/retriever.py` | Finds relevant chunks and answers from them with citations and a confidence flag |
 | `guardrails/checks.py` | PII redaction, prompt-injection blocking, medical-advice blocking, missing-source flag |
-| `evals/eval_set.json` | Test questions with expected answers |
+| `observability/tracing.py` | Langfuse tracing and eval scores (the only file that imports langfuse) |
+| `evals/eval_set.json` | 12 test cases with expected route, keywords and sources |
 | `evals/run_eval.py` | Scores the pipeline against the test set |
-| `data/members.json` | Fake member records used by the `lookup_member` tool |
 | `data/docs/` | Source documents (sample: fictional Lakeshore Health PPO plan) |
+| `data/members.json` | Fake member records used by the `lookup_member` tool |
+| `Dockerfile`, `.dockerignore` | Container image (see Deploy) |
 
 ## Setup
+
+Needs Python 3.12 or newer (tested on 3.14).
 
 ```powershell
 python -m venv .venv
@@ -54,7 +64,8 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create a `.env` file with your keys:
+Create a `.env` file with your keys. The Langfuse keys are optional, and
+tracing is skipped without them.
 
 ```
 OPENAI_API_KEY=...
@@ -63,15 +74,40 @@ LANGFUSE_SECRET_KEY=...
 LANGFUSE_HOST=https://us.cloud.langfuse.com
 ```
 
-Build the vector store and ask a question from the terminal:
+Build the vector store (run it again whenever the documents change):
 
 ```powershell
 python -m rag.ingest
+```
+
+## Run the app
+
+```powershell
+streamlit run app.py
+```
+
+Then open http://localhost:8501. Try "I'm member M001, what's my deductible?",
+then "Does an MRI need prior auth? Please start a request."
+
+You can also test the pieces from the terminal:
+
+```powershell
 python -m rag.retriever "Is an MRI covered and does it need prior authorization?"
 python -m agents.coordinator   # runs the memory and guardrail tests
 ```
 
-Then run `streamlit run app.py`.
+## Run the eval
+
+```powershell
+python -m evals.run_eval
+```
+
+This runs the 12 cases in `evals/eval_set.json`, each in a fresh conversation.
+A case passes only if four checks pass: the route, the expected keywords, the
+grounding (the right source is cited, or the answer correctly refuses, or a
+draft is created) and the guardrails. It prints a results table, the pass rate
+and the median and p95 latency. With Langfuse keys set, each result is also
+sent to Langfuse as a score on that case's trace.
 
 ## Deploy
 
@@ -104,5 +140,55 @@ on the host first (containing `[]`) and add
 command. Don't mount over all of `/app/data`, because the app reads
 `members.json` and the documents from there.
 
-> Status: the RAG layer, agents, conversation memory (in RAM, per thread_id), rule-based guardrails and the Streamlit app work. Prior auth drafts are only saved to `data/approved_requests.json` after a person clicks Approve. Every question is traced in Langfuse (redacted text only; tracing is skipped if the keys are missing), and `python -m evals.run_eval` runs the 12-case eval suite and sends each pass/fail to Langfuse as a score.
-> Member data in `data/members.json` is fake.
+## Design choices
+
+- **A router plus specialists, not one big agent.** The router uses structured
+  output, so it can only return `benefits`, `prior_auth` or `out_of_scope`.
+  Each specialist gets only the tools it needs, and only the Prior Auth agent
+  can draft requests. Out-of-scope questions get a fixed reply, and no
+  specialist or tool runs.
+- **Answers come from tools, with citations.** The specialists are told to
+  answer only from what their tools return. The retriever answers only from
+  the chunks it found and cites the file for each fact. If the best match is
+  weak, it flags the answer as low confidence. If nothing relevant is found,
+  it says so.
+- **Guardrails sit outside the model.** The input check runs before anything
+  reaches the model, the memory or Langfuse, so PII is redacted first and
+  prompt-injection attempts are blocked early. The output check is the last
+  step of the graph, so memory stores the checked answer, not the raw one. The
+  checks are plain rules, so they are fast, cost nothing and give the same
+  result every time.
+- **A person stays in the loop.** The agent can only create a draft with the
+  status `pending_approval`. Nothing is saved until a person clicks Approve in
+  the app.
+- **Memory is per conversation.** A LangGraph checkpointer saves the state
+  under a `thread_id`, so follow-up questions and the member id carry over
+  between turns.
+- **Observability and evals from the start.** Each question becomes one
+  Langfuse trace containing every node, model call and tool call, using only
+  the redacted text. The eval suite checks routing, content, grounding and
+  guardrails together, and records a score on each trace.
+- **gpt-4o-mini at temperature 0.** It is cheap and fast enough for a demo,
+  and temperature 0 keeps answers consistent between runs.
+
+## Known limitations
+
+- **The data is a demo.** There are three short plan documents and three fake
+  members. Nothing is connected to real claims or eligibility systems, and
+  approving a draft only writes it to a local JSON file.
+- **Memory is in RAM.** Conversations are lost when the app restarts, and
+  memory isn't shared between processes. A production version would use a
+  database checkpointer such as Postgres.
+- **The guardrails are rule-based.** The regex checks can miss PII or
+  injection attempts phrased in unexpected ways. They can also over-block:
+  every date is masked as a possible date of birth, and any dose such as
+  "10 mg" in an answer triggers the medical-advice replacement. An
+  LLM-based or ML classifier would catch more.
+- **Retrieval is simple.** It uses vector search only (no keyword or hybrid
+  search and no reranking), and the score cutoffs were tuned by hand on these
+  documents. Ingest rebuilds the whole store each time.
+- **The eval set is small.** Twelve cases show regressions but don't measure
+  quality statistically, and the keyword checks can miss answers that are
+  correct but worded differently.
+- **No authentication.** Anyone who can open the app can choose any member
+  id. Member data should sit behind a login before real use.
