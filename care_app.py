@@ -41,7 +41,6 @@ from agents.care_store import get_record, list_records, save_approved
 from agents.intake_agent import (QUESTION_BY_FIELD, QUESTIONS, answer_question, new_session,
                                  next_question, progress)
 from agents.patient_education import reading_grade
-from agents.speech import transcribe
 from guardrails.grounding import safety_problem
 from triage.urgent_signs import BANNER_TEXT, BANNER_TITLE, check_urgent
 
@@ -59,7 +58,7 @@ st.markdown("""<style>
 div.stButton > button, div.stDownloadButton > button, div.stFormSubmitButton > button {
     min-height: 3.2rem; font-size: 1.15rem; font-weight: 600; }
 .st-key-exit_intake button { min-height: 2.1rem; font-size: 0.9rem; font-weight: 500; }
-.st-key-voice_btn button, .st-key-lang_btn button { min-height: 1.8rem; font-size: 0.95rem; font-weight: 500; }
+.st-key-lang_btn button { min-height: 1.8rem; font-size: 0.95rem; font-weight: 500; }
 .pid { color: #52606D; font-size: 0.9rem; }
 /* thin progress bar */
 .stProgress div[role="progressbar"] > div > div { height: 6px; }
@@ -239,8 +238,8 @@ def submit(session, field: str, answer: str) -> None:
     with st.spinner("Reading the answer..."):
         answer_question(session, field, answer)
     ss.urgent = check_urgent(session.record, session.answers)
-    # Forget this question's screen state (typed text, voice text, age estimate).
-    for key in (f"ans-{field}", f"voice-pending-{field}", "age_estimate_open", "voice_open"):
+    # Forget this question's screen state (typed text, age estimate).
+    for key in (f"ans-{field}", "age_estimate_open"):
         ss.pop(key, None)
     # Next screen: if the following question was already answered (we are
     # going back through earlier answers), show it; otherwise the first
@@ -255,7 +254,7 @@ def submit(session, field: str, answer: str) -> None:
 
 
 def go_back(session, question) -> None:
-    for key in ("age_estimate_open", "voice_open"):
+    for key in ("age_estimate_open",):
         ss.pop(key, None)
     fields = [q.field for q in applicable(session)]
     if question is None:  # from the "done" screen: back to the last question
@@ -358,16 +357,13 @@ def age_problem(text: str) -> str | None:
 
 
 def question_card(session, question) -> None:
-    """The center card: the question, the typed answer right under it, a small
-    "Answer by voice" button, big answer buttons, then Back (left) and Next (right)."""
+    """The center card: the question, the typed answer right under it, big
+    answer buttons, then Back (left) and Next (right)."""
     field = question.field
-    text_key, pending_key = f"ans-{field}", f"voice-pending-{field}"
+    text_key = f"ans-{field}"
     current = session.answers.get(field, "")
     if current.strip().lower() == "skip":
         current = ""
-    # A voice transcript from the last run goes into the box before the box is drawn.
-    if pending_key in ss:
-        ss[text_key] = ss.pop(pending_key)
     ss.setdefault(text_key, current)
 
     with st.container(border=True, key="question_card"):
@@ -376,20 +372,6 @@ def question_card(session, question) -> None:
                       placeholder=(f"e.g. {question.hint}" if question.hint else "Type the answer")
                       + ("" if field == "age" else " · leave empty to skip"))
         problem_box = st.empty()  # filled if the typed age is not valid
-
-        # Optional voice answer, as a small secondary button under the box.
-        if st.button("Answer by voice", key="voice_btn", type="tertiary", icon=":material/mic:"):
-            ss.voice_open = not ss.get("voice_open", False)
-        if ss.get("voice_open"):
-            st.caption("Don't say the patient's name, phone number or address: the recording "
-                       "is sent to OpenAI to turn it into text. Check the text before Next.")
-            audio = st.audio_input("Record the answer", key=f"audio-{field}",
-                                   label_visibility="collapsed")
-            if audio is not None and ss.get(f"{pending_key}-id") != audio.file_id:
-                with st.spinner("Turning speech into text..."):
-                    ss[pending_key] = transcribe(audio.getvalue())
-                ss[f"{pending_key}-id"] = audio.file_id  # don't transcribe the same clip twice
-                st.rerun()
 
         # Big answer buttons, three per row. The current answer is highlighted.
         choices = list(CHOICES.get(field, []))
