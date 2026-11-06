@@ -14,7 +14,7 @@
       "id": "urgent_unconscious_elder",
       "known_names": [],
       "answers": {"preferred_language": "Swahili", "age": "78", "sex": "female",
-                  "weight_kg": "50", "chief_complaint": "Very hard to wake since this morning",
+                  "weight_kg": "110", "chief_complaint": "Very hard to wake since this morning",
                   "symptoms": "fever for 2 days"},
       "expect_urgent": true, "expected_sign": "Unconscious or very hard to wake",
       "required_fields": ["age", "sex", "chief_complaint", "preferred_language"]
@@ -22,7 +22,7 @@
     {
       "id": "urgent_convulsions",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "5", "sex": "girl", "weight_kg": "18",
+      "answers": {"preferred_language": "English", "age": "5", "sex": "girl", "weight_kg": "40",
                   "chief_complaint": "High fever and she had a fit about 20 minutes ago"},
       "expect_urgent": true, "expected_sign": "Convulsions (fits)",
       "required_fields": ["age", "sex", "chief_complaint"]
@@ -30,7 +30,7 @@
     {
       "id": "urgent_chest_pain_sweating",
       "known_names": ["Joseph Mwangi"],
-      "answers": {"preferred_language": "English", "age": "58", "sex": "male", "weight_kg": "90",
+      "answers": {"preferred_language": "English", "age": "58", "sex": "male", "weight_kg": "198",
                   "chief_complaint": "Joseph has chest pain since an hour ago",
                   "symptoms": "sweating a lot, feels sick, pain in left arm for 1 hour"},
       "expect_urgent": true, "expected_sign": "Chest pain with sweating",
@@ -40,7 +40,7 @@
     {
       "id": "urgent_heavy_bleeding",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "34", "sex": "male", "weight_kg": "70",
+      "answers": {"preferred_language": "English", "age": "34", "sex": "male", "weight_kg": "154",
                   "chief_complaint": "Deep cut on the leg from a machete, bleeding heavily and it won't stop"},
       "expect_urgent": true, "expected_sign": "Heavy bleeding",
       "required_fields": ["age", "sex", "chief_complaint"]
@@ -48,7 +48,7 @@
     {
       "id": "urgent_cannot_drink",
       "known_names": [],
-      "answers": {"preferred_language": "French", "age": "3", "sex": "male", "weight_kg": "13",
+      "answers": {"preferred_language": "French", "age": "3", "sex": "male", "weight_kg": "29",
                   "chief_complaint": "diarrhoea since yesterday",
                   "symptoms": "vomits everything, can't keep anything down since last night, very thirsty"},
       "expect_urgent": true, "expected_sign": "Cannot drink or keep anything down",
@@ -58,7 +58,7 @@
       "id": "urgent_pregnancy_bleeding",
       "known_names": [],
       "answers": {"preferred_language": "English", "age": "26", "sex": "woman",
-                  "pregnant": "yes, 7 months", "weight_kg": "65",
+                  "pregnant": "yes, 7 months", "weight_kg": "143",
                   "chief_complaint": "Some bleeding from down below since last night",
                   "symptoms": "belly pain for one day"},
       "expect_urgent": true, "expected_sign": "Pregnant and bleeding",
@@ -67,7 +67,7 @@
     {
       "id": "urgent_shock_by_vitals",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "40", "sex": "male", "weight_kg": "72",
+      "answers": {"preferred_language": "English", "age": "40", "sex": "male", "weight_kg": "159",
                   "chief_complaint": "Diarrhoea and feels dizzy",
                   "symptoms": "watery diarrhoea for 2 days, dizzy when standing",
                   "reported_condition": "they said cholera",
@@ -82,7 +82,7 @@
       "id": "calm_negations_tb",
       "known_names": ["Grace Achieng"],
       "answers": {"preferred_language": "English", "age": "31", "sex": "female",
-                  "pregnant": "no", "weight_kg": "52",
+                  "pregnant": "no", "weight_kg": "115",
                   "chief_complaint": "Cough for three weeks. No chest pain, no trouble breathing.",
                   "symptoms": "cough for 3 weeks, night sweats for 2 weeks, weight loss",
                   "reported_condition": "The clinic told me I have tuberculosis",
@@ -99,7 +99,7 @@
     {
       "id": "calm_diabetes",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "52", "sex": "male", "weight_kg": "95",
+      "answers": {"preferred_language": "English", "age": "52", "sex": "male", "weight_kg": "209",
                   "chief_complaint": "Always thirsty and tired",
                   "symptoms": "thirsty for 2 months, passing urine often, tired",
                   "reported_condition": "I was told I have type 2 diabetes",

@@ -168,7 +168,7 @@ def intake_lines(r: IntakeRecord) -> list[str]:
     rows = [
         ("Patient ID", r.patient_id), ("Age", r.age), ("Sex", r.sex),
         ("Pregnant", {True: "yes / possibly", False: "no"}.get(r.pregnant)),
-        ("Weight (kg)", r.weight_kg), ("Preferred language", r.preferred_language),
+        ("Weight (lb)", round(r.weight_kg * 2.205) if r.weight_kg else None), ("Preferred language", r.preferred_language),
         ("Main problem", r.chief_complaint),
         ("Symptoms", "; ".join(f"{s.name}" + (f" ({s.duration})" if s.duration else "")
                                for s in r.symptoms)),

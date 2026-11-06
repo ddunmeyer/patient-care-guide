@@ -60,7 +60,7 @@ QUESTIONS = [
     Question("sex", "Is the patient female or male?", "female / male / other"),
     Question("pregnant", "Is she pregnant, or could she be pregnant?", "yes / no / not sure",
              applies=_could_be_pregnant),
-    Question("weight_kg", "About how much does the patient weigh, in kg?", "60, or 'skip'"),
+    Question("weight_kg", "About how much does the patient weigh, in pounds?", "130, or 'skip'"),
     Question("chief_complaint", "What is the main problem today? Use the patient's own words.",
              "'I have had a fever and headache'"),
     Question("symptoms", "What other signs or symptoms are there, and how long has each "
@@ -211,8 +211,10 @@ def _read_answer(question: Question, answer: str):
     if f == "pregnant":
         return _parse_yes_no(answer)
     if f == "weight_kg":
+        # Asked in pounds; stored in kg (the record field stays weight_kg).
+        # If the caregiver writes "kg", the number is already kilograms.
         n = _number(answer)
-        return round(n / 2.205, 1) if n and re.search(r"lb|pound", answer, re.I) else n
+        return n if not n or re.search(r"kg|kilo", answer, re.I) else round(n / 2.205, 1)
     if f in ("chief_complaint", "caregiver_notes"):
         return None if NONE_RE.match(answer) else answer.strip()
     if f == "vitals":
