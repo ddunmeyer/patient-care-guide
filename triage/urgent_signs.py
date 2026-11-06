@@ -79,27 +79,59 @@ FIRST_AID = {
     "pregnancy_bleeding": [CALL_HELP, "Help her lie down on her left side.",
                            "Keep her warm. Do not put anything inside the vagina.",
                            "Bring any pregnancy card or clinic papers."],
+    "stroke": [CALL_HELP, "Note the time the signs started. Doctors need to know.",
+               "Lay them on their side if they are drowsy or vomiting.", NOTHING_BY_MOUTH, STAY],
+    "allergy": [CALL_HELP, "Help them sit up if breathing is hard, or lie flat if they feel faint.",
+                "If they have their own allergy pen, help them use it.", STAY],
+    "self_harm": [CALL_HELP, "Do not leave them alone.",
+                  "Keep pills, poisons and sharp objects out of reach.",
+                  "If they swallowed something, bring the bottle or packet with you."],
+    "fever_baby": [CALL_HELP, "Keep the baby lightly dressed, not wrapped up tightly.",
+                   "Keep breastfeeding or giving feeds if the baby will take them."],
+    "high_fever": [CALL_HELP, "Remove extra clothing and keep them cool.",
+                   "Give small sips of water if they are fully awake.", STAY],
 }
 
 # --- Word rules: (key, plain name, phrases) ---
 # Phrases are regular expressions; \b keeps "fits" from matching "benefits".
+# Widened after testing: any trouble breathing (not only "severe"), chest pain on
+# its own in adults, stroke, allergic swelling, self-harm and fever in babies,
+# plus common misspellings ("cant breath", "siezure").
 WORD_RULES = [
-    ("breathing", "Severe trouble breathing", [
-        r"can'?t breathe", r"cannot breathe", r"unable to breathe", r"struggl\w* to breathe",
+    ("breathing", "Trouble breathing", [
+        r"can'?t breathe?\b", r"cannot breathe?\b", r"unable to breathe?\b", r"struggl\w* to breathe?\b",
         r"gasping", r"blue lips", r"lips (are |turning )?blue",
-        r"(severe|very bad|serious) (shortness of breath|trouble breathing|difficulty breathing)",
-        r"(fighting|struggling) for breath", r"chest (is )?(pulling|sucking) in"]),
+        r"short(ness)? of breath", r"\bbreathless", r"out of breath",
+        r"(trouble|difficulty|problems?|hard|difficult) (with )?breath\w*", r"(hard|difficult) to breathe?\b",
+        r"can'?t (catch|get) (his |her |my |their )?breath",
+        r"(fighting|struggling) for breath", r"chest (is )?(pulling|sucking) in",
+        r"breathing (very )?(fast|hard|badly|noisy)"]),
     ("unconscious", "Unconscious or very hard to wake", [
         r"unconscious", r"unresponsive", r"not responding", r"won'?t wake", r"can'?t wake",
         r"cannot wake", r"hard to wake", r"difficult to wake", r"passed out", r"fainted",
-        r"collapsed", r"very (drowsy|sleepy)"]),
+        r"blacked out", r"\bout cold\b", r"collapsed", r"very (drowsy|sleepy)"]),
     ("convulsions", "Convulsions (fits)", [
-        r"convuls\w*", r"seizures?", r"\bfits?\b", r"\bfitting\b",
-        r"shaking (all over|uncontrollably)"]),
+        r"convuls\w*", r"s(ei|ie|i)[sz]ures?", r"(?<!coughing )\bfits?\b(?! of cough)(?! and well)",
+        r"\bfitting\b", r"shaking (all over|uncontrollably)"]),
+    ("stroke", "Signs of a stroke", [
+        r"face (is )?(drooping|droops|dropped|fallen)", r"droop\w* (face|mouth|on one side)",
+        r"slurr\w* (speech|words|talking)", r"speech (is )?slurred", r"can'?t (speak|talk) properly",
+        r"(weak|numb|can'?t move|can'?t feel)\w* (on |in )?(one|his|her|their|the) (left |right )?(side|arm|leg)",
+        r"one side (of (the|his|her|their) body )?(is )?(weak|numb)",
+        r"sudden (weakness|numbness|confusion)", r"worst headache"]),
     ("bleeding", "Heavy bleeding", [
-        r"heavy bleeding", r"bleeding (heavily|a lot|badly|won'?t stop|that won'?t stop)",
+        r"heavy bleeding", r"bleeding (heavily|a lot|badly|won'?t stop|that won'?t stop|nonstop)",
         r"won'?t stop bleeding", r"lots of blood", r"losing (a lot of )?blood",
-        r"vomiting blood", r"soak\w* (through )?(pads?|cloths?)"]),
+        r"blood (is )?(pouring|gushing|spurting)", r"vomit\w* (up )?blood", r"cough\w* (up )?blood",
+        r"soak\w* (through )?(pads?|cloths?)"]),
+    ("allergy", "Severe allergic reaction", [
+        r"(lips?|tongue|throat|face) (is |are )?(swelling|swollen|swelled)",
+        r"swell\w* (of |in )?(the |his |her |their )?(lips?|tongue|throat|face)",
+        r"throat (is )?(closing|tight)", r"anaphyla\w*"]),
+    ("self_harm", "Self-harm or poisoning", [
+        r"want\w* to die", r"kill (myself|himself|herself|themselves)", r"suicid\w*",
+        r"overdos\w*", r"too many (pills|tablets)", r"(?<!food )poison\w*",
+        r"(drank|swallowed) (bleach|paraffin|kerosene|pesticide|rat poison)"]),
     ("cannot_drink", "Cannot drink or keep anything down", [
         r"can'?t (drink|keep anything down|keep (food|water|fluids|anything) down)",
         r"cannot (drink|keep anything down)", r"unable to (drink|keep anything down)",
@@ -110,10 +142,14 @@ WORD_RULES = [
         r"(weak|faint),? fast pulse", r"fast,? weak pulse", r"very pale and (cold|weak)"]),
 ]
 NEGATION_RE = re.compile(r"\b(no|not|denies|denied|without|never|none)\b", re.IGNORECASE)
-CHEST_PAIN_RE = re.compile(r"chest (pain|tightness|pressure)|pain in (the |his |her )?chest",
-                           re.IGNORECASE)
+# "Never had pain like this before" is not a negation: it makes the sign worse.
+NOT_A_NEGATION_RE = re.compile(r"\bnever\b.*\b(like (this|that)|this bad|so bad|before)\b",
+                               re.IGNORECASE)
+CHEST_PAIN_RE = re.compile(r"chest (pain|tightness|pressure|hurts?)|pain in (the |his |her |their )?chest"
+                           r"|heart attack", re.IGNORECASE)
 SWEATING_RE = re.compile(r"sweat\w*|clammy", re.IGNORECASE)
 BLEEDING_RE = re.compile(r"bleed\w*|blood", re.IGNORECASE)
+FEVER_RE = re.compile(r"fever\w*|feverish|\bhot\b|high temp\w*", re.IGNORECASE)
 
 
 def _clauses(text: str) -> list[str]:
@@ -128,7 +164,10 @@ def _find(pattern: str | re.Pattern, text: str) -> str | None:
     regex = re.compile(pattern, re.IGNORECASE) if isinstance(pattern, str) else pattern
     for clause in _clauses(text):
         match = regex.search(clause)
-        if match and not NEGATION_RE.search(clause[:match.start()]):
+        if not match:
+            continue
+        negated = NEGATION_RE.search(clause[:match.start()]) and not NOT_A_NEGATION_RE.search(clause)
+        if not negated:
             return clause
     return None
 
@@ -171,22 +210,34 @@ def check_urgent(record: IntakeRecord, answers: dict[str, str] | None = None) ->
                 add(key, name, f'Intake says: "{clause}"')
                 break
 
-    # 2. Chest pain WITH sweating (both must be there, anywhere in the intake)
-    pain = _find(CHEST_PAIN_RE, text)
-    sweat = _find(SWEATING_RE, text)
-    if pain and sweat:
-        add("chest_pain", "Chest pain with sweating", f'Intake says: "{pain}" and "{sweat}"')
+    adult = record.age is None or record.age >= 12
+
+    # 2. Chest pain in anyone 12 or older (or age unknown). It can be a heart
+    #    attack, and a caregiver cannot rule that out. Sweating is noted if present.
+    if adult and (pain := _find(CHEST_PAIN_RE, text)):
+        sweat = _find(SWEATING_RE, text)
+        add("chest_pain", "Chest pain", f'Intake says: "{pain}"' + (f' and "{sweat}"' if sweat else ""))
 
     # 3. Pregnant AND any bleeding: always urgent, even if not called "heavy"
     if record.pregnant and (clause := _find(BLEEDING_RE, text)):
         add("pregnancy_bleeding", "Pregnant and bleeding", f'Patient may be pregnant; intake '
             f'says: "{clause}"')
 
-    # 4. Vitals
+    # 4. Any fever in a baby under 1 year (age 0). Young babies with fever can
+    #    get very sick quickly.
+    if record.age == 0 and (clause := _find(FEVER_RE, text)):
+        add("fever_baby", "Fever in a baby", f'Baby under 1 year; intake says: "{clause}"')
+
+    # 5. Vitals
     v = record.vitals
     if v.breathing_rate is not None and _fast_breathing(record.age, v.breathing_rate):
-        add("breathing", "Severe trouble breathing",
+        add("breathing", "Trouble breathing",
             f"Breathing rate {v.breathing_rate} per minute is outside the safe range for the age")
+    if v.temp_c is not None and (v.temp_c >= 40 or v.temp_c < 35):
+        add("high_fever", "Very high or very low temperature",
+            f"Temperature {v.temp_c} C is outside the safe range")
+    if record.age == 0 and v.temp_c is not None and v.temp_c >= 38:
+        add("fever_baby", "Fever in a baby", f"Baby under 1 year with temperature {v.temp_c} C")
     if v.bp_systolic is not None and v.bp_systolic < 90 and (record.age is None or record.age >= 12):
         add("shock", "Signs of shock", f"Blood pressure top number {v.bp_systolic} is very low")
     if v.pulse is not None and (v.pulse >= 140 or v.pulse < 40) and (record.age is None or record.age >= 12):

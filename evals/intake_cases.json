@@ -4,113 +4,484 @@
     {
       "id": "urgent_breathing_child",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "2", "sex": "boy",
-                  "chief_complaint": "He can't breathe properly and his lips are turning blue",
-                  "symptoms": "cough for 4 days, fever since yesterday"},
-      "expect_urgent": true, "expected_sign": "Severe trouble breathing",
-      "required_fields": ["age", "sex", "chief_complaint"]
+      "answers": {
+        "preferred_language": "English",
+        "age": "2",
+        "sex": "boy",
+        "chief_complaint": "He can't breathe properly and his lips are turning blue",
+        "symptoms": "cough for 4 days, fever since yesterday"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Trouble breathing",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint"
+      ]
     },
     {
       "id": "urgent_unconscious_elder",
       "known_names": [],
-      "answers": {"preferred_language": "Swahili", "age": "78", "sex": "female",
-                  "weight_kg": "110", "chief_complaint": "Very hard to wake since this morning",
-                  "symptoms": "fever for 2 days"},
-      "expect_urgent": true, "expected_sign": "Unconscious or very hard to wake",
-      "required_fields": ["age", "sex", "chief_complaint", "preferred_language"]
+      "answers": {
+        "preferred_language": "Swahili",
+        "age": "78",
+        "sex": "female",
+        "weight_kg": "110",
+        "chief_complaint": "Very hard to wake since this morning",
+        "symptoms": "fever for 2 days"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Unconscious or very hard to wake",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint",
+        "preferred_language"
+      ]
     },
     {
       "id": "urgent_convulsions",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "5", "sex": "girl", "weight_kg": "40",
-                  "chief_complaint": "High fever and she had a fit about 20 minutes ago"},
-      "expect_urgent": true, "expected_sign": "Convulsions (fits)",
-      "required_fields": ["age", "sex", "chief_complaint"]
+      "answers": {
+        "preferred_language": "English",
+        "age": "5",
+        "sex": "girl",
+        "weight_kg": "40",
+        "chief_complaint": "High fever and she had a fit about 20 minutes ago"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Convulsions (fits)",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint"
+      ]
     },
     {
       "id": "urgent_chest_pain_sweating",
-      "known_names": ["Joseph Mwangi"],
-      "answers": {"preferred_language": "English", "age": "58", "sex": "male", "weight_kg": "198",
-                  "chief_complaint": "Joseph has chest pain since an hour ago",
-                  "symptoms": "sweating a lot, feels sick, pain in left arm for 1 hour"},
-      "expect_urgent": true, "expected_sign": "Chest pain with sweating",
-      "required_fields": ["age", "sex", "chief_complaint", "symptoms"],
-      "must_mask": ["Joseph", "Mwangi"]
+      "known_names": [
+        "Joseph Mwangi"
+      ],
+      "answers": {
+        "preferred_language": "English",
+        "age": "58",
+        "sex": "male",
+        "weight_kg": "198",
+        "chief_complaint": "Joseph has chest pain since an hour ago",
+        "symptoms": "sweating a lot, feels sick, pain in left arm for 1 hour"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Chest pain",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint"
+      ],
+      "must_mask": [
+        "Joseph",
+        "Mwangi"
+      ]
     },
     {
       "id": "urgent_heavy_bleeding",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "34", "sex": "male", "weight_kg": "154",
-                  "chief_complaint": "Deep cut on the leg from a machete, bleeding heavily and it won't stop"},
-      "expect_urgent": true, "expected_sign": "Heavy bleeding",
-      "required_fields": ["age", "sex", "chief_complaint"]
+      "answers": {
+        "preferred_language": "English",
+        "age": "34",
+        "sex": "male",
+        "weight_kg": "154",
+        "chief_complaint": "Deep cut on the leg from a machete, bleeding heavily and it won't stop"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Heavy bleeding",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint"
+      ]
     },
     {
       "id": "urgent_cannot_drink",
       "known_names": [],
-      "answers": {"preferred_language": "French", "age": "3", "sex": "male", "weight_kg": "29",
-                  "chief_complaint": "diarrhoea since yesterday",
-                  "symptoms": "vomits everything, can't keep anything down since last night, very thirsty"},
-      "expect_urgent": true, "expected_sign": "Cannot drink or keep anything down",
-      "required_fields": ["age", "sex", "chief_complaint", "symptoms"]
+      "answers": {
+        "preferred_language": "French",
+        "age": "3",
+        "sex": "male",
+        "weight_kg": "29",
+        "chief_complaint": "diarrhoea since yesterday",
+        "symptoms": "vomits everything, can't keep anything down since last night, very thirsty"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Cannot drink or keep anything down",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint",
+        "symptoms"
+      ]
     },
     {
       "id": "urgent_pregnancy_bleeding",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "26", "sex": "woman",
-                  "pregnant": "yes, 7 months", "weight_kg": "143",
-                  "chief_complaint": "Some bleeding from down below since last night",
-                  "symptoms": "belly pain for one day"},
-      "expect_urgent": true, "expected_sign": "Pregnant and bleeding",
-      "required_fields": ["age", "sex", "pregnant", "chief_complaint"]
+      "answers": {
+        "preferred_language": "English",
+        "age": "26",
+        "sex": "woman",
+        "pregnant": "yes, 7 months",
+        "weight_kg": "143",
+        "chief_complaint": "Some bleeding from down below since last night",
+        "symptoms": "belly pain for one day"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Pregnant and bleeding",
+      "required_fields": [
+        "age",
+        "sex",
+        "pregnant",
+        "chief_complaint"
+      ]
     },
     {
       "id": "urgent_shock_by_vitals",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "40", "sex": "male", "weight_kg": "159",
-                  "chief_complaint": "Diarrhoea and feels dizzy",
-                  "symptoms": "watery diarrhoea for 2 days, dizzy when standing",
-                  "reported_condition": "they said cholera",
-                  "known_conditions": "none", "current_meds": "none", "allergies": "none",
-                  "past_surgeries_hospital_stays": "none", "family_history": "none",
-                  "lifestyle": "no smoking, no alcohol",
-                  "vitals": "temp 37.2, pulse 128, BP 82/50, breathing 22"},
-      "expect_urgent": true, "expected_sign": "Signs of shock",
-      "required_fields": ["age", "sex", "chief_complaint", "symptoms", "vitals"]
+      "answers": {
+        "preferred_language": "English",
+        "age": "40",
+        "sex": "male",
+        "weight_kg": "159",
+        "chief_complaint": "Diarrhoea and feels dizzy",
+        "symptoms": "watery diarrhoea for 2 days, dizzy when standing",
+        "reported_condition": "they said cholera",
+        "known_conditions": "none",
+        "current_meds": "none",
+        "allergies": "none",
+        "past_surgeries_hospital_stays": "none",
+        "family_history": "none",
+        "lifestyle": "no smoking, no alcohol",
+        "vitals": "temp 37.2, pulse 128, BP 82/50, breathing 22"
+      },
+      "expect_urgent": true,
+      "expected_sign": "Signs of shock",
+      "required_fields": [
+        "age",
+        "sex",
+        "chief_complaint",
+        "symptoms",
+        "vitals"
+      ]
     },
     {
       "id": "calm_negations_tb",
-      "known_names": ["Grace Achieng"],
-      "answers": {"preferred_language": "English", "age": "31", "sex": "female",
-                  "pregnant": "no", "weight_kg": "115",
-                  "chief_complaint": "Cough for three weeks. No chest pain, no trouble breathing.",
-                  "symptoms": "cough for 3 weeks, night sweats for 2 weeks, weight loss",
-                  "reported_condition": "The clinic told me I have tuberculosis",
-                  "known_conditions": "none", "current_meds": "none", "allergies": "none",
-                  "past_surgeries_hospital_stays": "none", "family_history": "none",
-                  "lifestyle": "no smoking, no alcohol",
-                  "vitals": "temp 37.8, pulse 92, BP 112/74, breathing 18",
-                  "caregiver_notes": "Grace lives at 14 Station Road, phone +254 722 111 222. Not bleeding."},
+      "known_names": [
+        "Grace Achieng"
+      ],
+      "answers": {
+        "preferred_language": "English",
+        "age": "31",
+        "sex": "female",
+        "pregnant": "no",
+        "weight_kg": "115",
+        "chief_complaint": "Cough for three weeks. No chest pain, no trouble breathing.",
+        "symptoms": "cough for 3 weeks, night sweats for 2 weeks, weight loss",
+        "reported_condition": "The clinic told me I have tuberculosis",
+        "known_conditions": "none",
+        "current_meds": "none",
+        "allergies": "none",
+        "past_surgeries_hospital_stays": "none",
+        "family_history": "none",
+        "lifestyle": "no smoking, no alcohol",
+        "vitals": "temp 37.8, pulse 92, BP 112/74, breathing 18",
+        "caregiver_notes": "Grace lives at 14 Station Road, phone +254 722 111 222. Not bleeding."
+      },
       "expect_urgent": false,
-      "required_fields": ["patient_id", "preferred_language", "age", "sex", "chief_complaint",
-                          "symptoms", "vitals"],
-      "must_mask": ["Grace", "Achieng", "14 Station Road", "722 111 222"]
+      "required_fields": [
+        "patient_id",
+        "preferred_language",
+        "age",
+        "sex",
+        "chief_complaint",
+        "symptoms",
+        "vitals"
+      ],
+      "must_mask": [
+        "Grace",
+        "Achieng",
+        "14 Station Road",
+        "722 111 222"
+      ]
     },
     {
       "id": "calm_diabetes",
       "known_names": [],
-      "answers": {"preferred_language": "English", "age": "52", "sex": "male", "weight_kg": "209",
-                  "chief_complaint": "Always thirsty and tired",
-                  "symptoms": "thirsty for 2 months, passing urine often, tired",
-                  "reported_condition": "I was told I have type 2 diabetes",
-                  "known_conditions": "high blood pressure", "current_meds": "metformin, amlodipine",
-                  "allergies": "penicillin", "past_surgeries_hospital_stays": "none",
-                  "family_history": "father had diabetes", "lifestyle": "smokes 5 a day, beer on weekends",
-                  "vitals": "temp 36.8, pulse 80, BP 145/92, breathing 16", "caregiver_notes": "no"},
+      "answers": {
+        "preferred_language": "English",
+        "age": "52",
+        "sex": "male",
+        "weight_kg": "209",
+        "chief_complaint": "Always thirsty and tired",
+        "symptoms": "thirsty for 2 months, passing urine often, tired",
+        "reported_condition": "I was told I have type 2 diabetes",
+        "known_conditions": "high blood pressure",
+        "current_meds": "metformin, amlodipine",
+        "allergies": "penicillin",
+        "past_surgeries_hospital_stays": "none",
+        "family_history": "father had diabetes",
+        "lifestyle": "smokes 5 a day, beer on weekends",
+        "vitals": "temp 36.8, pulse 80, BP 145/92, breathing 16",
+        "caregiver_notes": "no"
+      },
       "expect_urgent": false,
-      "required_fields": ["patient_id", "preferred_language", "age", "sex", "weight_kg",
-                          "chief_complaint", "symptoms", "known_conditions",
-                          "current_meds", "allergies", "family_history", "lifestyle", "vitals"]
+      "required_fields": [
+        "patient_id",
+        "preferred_language",
+        "age",
+        "sex",
+        "weight_kg",
+        "chief_complaint",
+        "symptoms",
+        "known_conditions",
+        "current_meds",
+        "allergies",
+        "family_history",
+        "lifestyle",
+        "vitals"
+      ]
+    },
+    {
+      "id": "hard_chest_pain_alone",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "47",
+        "sex": "male",
+        "chief_complaint": "Pain in his chest since this morning"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Chest pain"
+    },
+    {
+      "id": "hard_short_of_breath",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "63",
+        "sex": "female",
+        "chief_complaint": "She is short of breath even sitting down"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Trouble breathing"
+    },
+    {
+      "id": "hard_misspelled_breath",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "4",
+        "sex": "boy",
+        "chief_complaint": "cant breath good, coughing"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Trouble breathing"
+    },
+    {
+      "id": "hard_misspelled_seizure",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "9",
+        "sex": "girl",
+        "chief_complaint": "had a siezure this morning"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Convulsions (fits)"
+    },
+    {
+      "id": "hard_never_like_this",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "55",
+        "sex": "male",
+        "chief_complaint": "Never had chest pain like this before"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Chest pain"
+    },
+    {
+      "id": "hard_stroke",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "71",
+        "sex": "male",
+        "chief_complaint": "His face is drooping on one side and his speech is slurred"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Signs of a stroke"
+    },
+    {
+      "id": "hard_allergy",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "16",
+        "sex": "female",
+        "chief_complaint": "Lips and tongue swelling after eating peanuts"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Severe allergic reaction"
+    },
+    {
+      "id": "hard_self_harm",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "19",
+        "sex": "female",
+        "chief_complaint": "Says she wants to die. Took too many of her pills"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Self-harm or poisoning"
+    },
+    {
+      "id": "hard_baby_fever",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "6 weeks",
+        "sex": "boy",
+        "chief_complaint": "Fever since last night, feeding less"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Fever in a baby"
+    },
+    {
+      "id": "hard_high_temp_vitals",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "30",
+        "sex": "male",
+        "chief_complaint": "Headache and body aches",
+        "vitals": "temp 40.6, pulse 104, breathing 20"
+      },
+      "expect_urgent": true,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ],
+      "expected_sign": "Very high or very low temperature"
+    },
+    {
+      "id": "trap_coughing_fits",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "35",
+        "sex": "female",
+        "chief_complaint": "Coughing fits at night for two weeks"
+      },
+      "expect_urgent": false,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ]
+    },
+    {
+      "id": "trap_food_poisoning",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "28",
+        "sex": "male",
+        "chief_complaint": "Food poisoning two days ago, feeling better now"
+      },
+      "expect_urgent": false,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ]
+    },
+    {
+      "id": "trap_negated_list",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "45",
+        "sex": "male",
+        "chief_complaint": "No chest pain, no shortness of breath, no fever. Mild back pain."
+      },
+      "expect_urgent": false,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ]
+    },
+    {
+      "id": "trap_small_cut",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "30",
+        "sex": "female",
+        "chief_complaint": "Small cut on the finger, bleeding stopped with pressure"
+      },
+      "expect_urgent": false,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ]
+    },
+    {
+      "id": "trap_child_chest_cough",
+      "known_names": [],
+      "answers": {
+        "preferred_language": "English",
+        "age": "8",
+        "sex": "boy",
+        "chief_complaint": "Chest hurts a little when he coughs, playing normally"
+      },
+      "expect_urgent": false,
+      "required_fields": [
+        "age",
+        "chief_complaint"
+      ]
     }
   ]
 }

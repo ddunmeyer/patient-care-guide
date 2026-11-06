@@ -100,8 +100,7 @@ Then open http://localhost:8501:
    in a center card: type the answer in the box right under the question or
    tap a big answer button, then tap **Next** (an empty answer is skipped,
    except age, which is required) or **Back**. Every answer so far is a
-   chip at the bottom: tap one to edit it. Try "chest pain and sweating a
-   lot" as the main problem: the whole page turns into the red **Get
+   chip at the bottom: tap one to edit it. Try "chest pain" as the main problem: the whole page turns into the red **Get
    emergency care now** screen.
 2. When the intake is done, check the condition and click **Make patient sheet
    and care team briefing** (about 15-40 seconds).
@@ -123,13 +122,19 @@ python -m agents.care_coordinator          # one urgent and one calm patient
 ### Run the eval
 
 ```powershell
-python -m evals.run_care_eval              # all 15 cases
-python -m evals.run_care_eval intake       # the 10 intake cases only (fast)
+python -m evals.run_care_eval              # all 30 cases
+python -m evals.run_care_eval intake       # the 25 intake cases only (fast)
 python -m evals.run_care_eval condition    # the 5 condition cases only
 ```
 
-- **10 intake cases**: 8 urgent cases (one for each danger sign, including
-  shock found from the vitals alone) and 2 calm ones. They check that every
+- **25 intake cases**: 18 urgent cases and 7 calm ones. The urgent cases
+  cover every danger sign, including shock and fever found from the vitals
+  alone, plus harder wordings: misspellings ("cant breath", "siezure"),
+  "never had chest pain like this before" (a "never" that must not cancel
+  the sign), stroke, allergic swelling, self-harm and a 6-week-old with
+  fever. Five calm cases are false-alarm traps: "coughing fits", "food
+  poisoning", a list of negations, a small cut that stopped bleeding, and
+  a child whose chest hurts only when coughing. They check that every
   urgent case stops with the right sign and that the coordinator stops too.
   They also check that calm cases don't stop, that the required fields are
   filled, and that names, phone numbers and addresses are masked. **A missed
@@ -145,7 +150,7 @@ python -m evals.run_care_eval condition    # the 5 condition cases only
   on its trace, with the time in the comment. Langfuse also shows each run's
   duration.
 
-Last run: intake 10/10, conditions 5/5 (median 13 seconds per condition).
+Last run: intake 25/25, conditions 5/5 (median 13 seconds per condition).
 
 ### Docker
 
@@ -169,11 +174,16 @@ all of `/app/data`.
 
 - **Urgent signs come first and can't be overridden.** After every answer,
   `triage/urgent_signs.py` checks for:
-  - severe trouble breathing;
+  - any trouble breathing or shortness of breath;
   - being unconscious or very hard to wake;
   - convulsions;
-  - chest pain with sweating;
-  - heavy bleeding;
+  - chest pain in anyone 12 or older;
+  - signs of a stroke (drooping face, slurred speech, weakness on one side);
+  - severe allergic reaction (swelling lips, tongue or throat);
+  - self-harm or poisoning;
+  - any fever in a baby under 1 year, or a temperature of 40 C or more
+    (or below 35 C) at any age;
+  - heavy bleeding, or coughing or vomiting blood;
   - being unable to drink or keep anything down;
   - signs of shock (including very low blood pressure or a very high pulse);
   - pregnancy with any bleeding.
@@ -243,8 +253,8 @@ caregiver can check them.
 - **openFDA lists US-approved labels**, including repackagers. It shows which
   drugs are approved for a condition in the US, not what is available
   locally.
-- **The urgent rules are keyword rules.** They catch the listed phrasings and
-  vitals cut-offs, but an unusual description of a danger sign can be
+- **The urgent rules are keyword rules.** They catch the listed phrasings (and
+  common misspellings) and vitals cut-offs, but an unusual description of a danger sign can be
   missed. Train caregivers to trust their own judgement first.
 - **Without a Tavily key**, standard-of-care points come mainly from PubMed
   abstracts, and "what you can do at home" is often "No current data found."
