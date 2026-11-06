@@ -180,7 +180,7 @@ def page_home() -> None:
 # The 5 steps shown in the progress bar. Each intake question belongs to one.
 SECTIONS = [
     ("About the patient", ["preferred_language", "age", "sex", "pregnant", "weight_kg"]),
-    ("Today's problem", ["chief_complaint", "symptoms", "reported_condition"]),
+    ("Today's problem", ["chief_complaint", "symptoms"]),
     ("Health history", ["known_conditions", "current_meds", "allergies",
                         "past_surgeries_hospital_stays", "family_history"]),
     ("Lifestyle and vitals", ["lifestyle", "vitals"]),
@@ -195,7 +195,6 @@ CHOICES = {
                                             "Portuguese", "Arabic")],
     "sex": [("Female", "female"), ("Male", "male"), ("Other", "other")],
     "pregnant": [("Yes", "yes"), ("No", "no"), ("Not sure", "maybe")],  # not sure counts as yes
-    "reported_condition": [("No, not told", "no")],
     "known_conditions": [("None", "none")],
     "current_meds": [("None", "none")],
     "allergies": [("None", "none")],
@@ -207,7 +206,7 @@ CHOICES = {
 # Short names for the answer chips at the bottom of the screen.
 SHORT = {"preferred_language": "Language", "age": "Age", "sex": "Sex", "pregnant": "Pregnant",
          "weight_kg": "Weight", "chief_complaint": "Main problem", "symptoms": "Symptoms",
-         "reported_condition": "Told they have", "known_conditions": "Conditions",
+         "known_conditions": "Conditions",
          "current_meds": "Medicines", "allergies": "Allergies",
          "past_surgeries_hospital_stays": "Surgeries", "family_history": "Family",
          "lifestyle": "Smoking/alcohol", "vitals": "Vitals", "caregiver_notes": "Notes"}
@@ -414,8 +413,8 @@ def done_card(session) -> None:
         st.success("No urgent signs found.", icon=":material/check_circle:")
         with st.expander("Intake summary"):
             st.markdown("\n".join(f"- {line}" for line in intake_lines(session.record)))
-        st.write("Which condition should the information be about? This app does not diagnose: "
-                 "use what a health worker told the patient.")
+        st.markdown("**Which condition should the patient sheet and briefing cover?**")
+        st.caption("Use a condition a health worker has already named. This app does not diagnose.")
         condition = st.text_input("Condition", value=session.record.reported_condition or "",
                                   placeholder="e.g. malaria, type 2 diabetes")
         back, make = st.columns([1, 3])

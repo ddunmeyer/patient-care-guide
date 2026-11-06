@@ -93,7 +93,7 @@
                   "caregiver_notes": "Grace lives at 14 Station Road, phone +254 722 111 222. Not bleeding."},
       "expect_urgent": false,
       "required_fields": ["patient_id", "preferred_language", "age", "sex", "chief_complaint",
-                          "symptoms", "reported_condition", "vitals"],
+                          "symptoms", "vitals"],
       "must_mask": ["Grace", "Achieng", "14 Station Road", "722 111 222"]
     },
     {
@@ -109,7 +109,7 @@
                   "vitals": "temp 36.8, pulse 80, BP 145/92, breathing 16", "caregiver_notes": "no"},
       "expect_urgent": false,
       "required_fields": ["patient_id", "preferred_language", "age", "sex", "weight_kg",
-                          "chief_complaint", "symptoms", "reported_condition", "known_conditions",
+                          "chief_complaint", "symptoms", "known_conditions",
                           "current_meds", "allergies", "family_history", "lifestyle", "vitals"]
     }
   ]

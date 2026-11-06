@@ -65,8 +65,6 @@ QUESTIONS = [
              "'I have had a fever and headache'"),
     Question("symptoms", "What other signs or symptoms are there, and how long has each "
              "lasted?", "'cough for 2 weeks, tired since Monday'"),
-    Question("reported_condition", "Has a health worker told the patient they have an illness? "
-             "Which one?", "'I was told I have malaria', or 'no'"),
     Question("known_conditions", "Does the patient have any long-term health problems?",
              "diabetes, HIV, high blood pressure, asthma... or 'none'"),
     Question("current_meds", "What medicines, herbs or supplements does the patient take now?",
