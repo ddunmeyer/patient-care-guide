@@ -29,6 +29,8 @@ FONT_CANDIDATES = [  # (regular, bold)
     ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/arialbd.ttf"),
     ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
      "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+    ("/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",          # Amazon Linux (EC2)
+     "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans-Bold.ttf"),
 ]
 
 SHEET_HEADINGS = [  # (field, heading shown to the patient)

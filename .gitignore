@@ -6,3 +6,6 @@ data/approved_requests.json
 
 # Local SQLite files: tool cache and approved patient records (patient data!)
 data/*.db
+
+# EC2 hosting: resource IDs written by scripts/hosting/deploy.py
+.patientcare-hosting.json
